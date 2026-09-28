@@ -1,0 +1,202 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <meta name="theme-color" content="#252525">
+  <meta name="description" content="Dedicale unas palabras a alguien que te ayudó en el camino. Aparece en las pantallas del cubo post.">
+  <title>Dedicatorias · post.</title>
+  <link rel="icon" href="assets/logo-post.png">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&family=JetBrains+Mono:wght@700;800&family=Reddit+Sans:wght@400;600;700&family=Sora:wght@400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="styles.css">
+  <script src="config.js"></script>
+  <script src="nota.js" defer></script>
+  <script src="moderacion.js" defer></script>
+  <script src="app.js" defer></script>
+</head>
+<body>
+  <main class="app" id="app">
+
+    <!-- ============ 1 · ESCRIBIR ============ -->
+    <section class="pantalla" id="p-escribir" aria-labelledby="t-escribir">
+      <header class="header" data-anim>
+        <button class="icon-btn" id="btn-salir" type="button" aria-label="Volver a la app">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12H3M10 5l-7 7 7 7"/></svg>
+        </button>
+        <h1 class="header__titulo" id="t-escribir" tabindex="-1">Dedicatoria</h1>
+        <span class="header__lado" aria-hidden="true"></span>
+      </header>
+
+      <div class="contenido">
+        <p class="bajada" data-anim>Dedicale unas palabras a alguien que te ayudó en el camino. Se publica de forma anónima.</p>
+
+        <div class="preview" data-anim>
+          <span class="preview__label">Vista previa</span>
+          <div class="deco" id="deco-preview" aria-hidden="true"></div>
+          <div class="nota-slot" id="slot-preview" role="img" aria-label="Vista previa de tu nota"></div>
+          <div class="preview__pie">
+            <span class="preview__ayuda">Se ajusta al largo del mensaje</span>
+            <div class="talles" role="group" aria-label="Tamaño de la nota">
+              <button type="button" class="talle" data-talle="S">S</button>
+              <button type="button" class="talle" data-talle="M">M</button>
+              <button type="button" class="talle" data-talle="L">L</button>
+              <button type="button" class="talle" data-talle="XL">XL</button>
+            </div>
+          </div>
+        </div>
+
+        <form id="form" novalidate autocomplete="off">
+          <div class="campo" id="campo-para" data-anim>
+            <label class="campo__label" for="in-para">¿Para quién es?</label>
+            <div class="input">
+              <span class="input__prefijo" aria-hidden="true">para:</span>
+              <input id="in-para" name="para" type="text" maxlength="20" placeholder="nombre o apodo"
+                     autocapitalize="none" spellcheck="false" enterkeyhint="next" aria-describedby="ayuda-para">
+            </div>
+            <div class="campo__pie">
+              <span class="campo__ayuda" id="ayuda-para">Nombre o apodo, sin apellido</span>
+              <span class="contador" id="cont-para" aria-hidden="true">0 / 20</span>
+            </div>
+          </div>
+
+          <div class="campo" id="campo-msg" data-anim>
+            <label class="campo__label" for="in-msg">Tu mensaje</label>
+            <div class="textarea">
+              <textarea id="in-msg" name="mensaje" maxlength="250" rows="3" placeholder="Gracias por…"
+                        enterkeyhint="done" aria-describedby="err-msg cont-msg"></textarea>
+              <span class="contador contador--in" id="cont-msg">0 / 250</span>
+            </div>
+            <span class="campo__error" id="err-msg" aria-live="polite"></span>
+          </div>
+
+          <fieldset class="campo colores" data-anim>
+            <legend class="campo__label">Elegí un color</legend>
+            <div class="colores__lista">
+              <label class="swatch"><input type="radio" name="color" value="azul"><span class="swatch__c" style="--c:#7aa1ff"></span><span class="sr">Azul</span></label>
+              <label class="swatch"><input type="radio" name="color" value="verde" checked><span class="swatch__c" style="--c:#49b867"></span><span class="sr">Verde</span></label>
+              <label class="swatch"><input type="radio" name="color" value="violeta"><span class="swatch__c" style="--c:#ab8ae6"></span><span class="sr">Violeta</span></label>
+              <label class="swatch"><input type="radio" name="color" value="rosa"><span class="swatch__c" style="--c:#f79ee1"></span><span class="sr">Rosa</span></label>
+            </div>
+          </fieldset>
+        </form>
+      </div>
+
+      <footer class="pie" data-anim>
+        <div class="alerta-mod" id="alerta-mod" role="alert" hidden>
+          <svg class="alerta-mod__icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg>
+          <div>
+            <strong>No está permitido publicar este tipo de contenido.</strong>
+            <span class="alerta-mod__detalle" id="alerta-mod-detalle"></span>
+          </div>
+        </div>
+        <button class="btn btn--primario btn--ancho" id="btn-continuar" type="submit" form="form" aria-disabled="true">
+          Continuar
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M14 5l7 7-7 7"/></svg>
+        </button>
+        <div class="progreso" aria-label="Paso 1 de 3"><i class="on"></i><i></i><i></i></div>
+      </footer>
+    </section>
+
+    <!-- ============ 2 · VISTA PREVIA ============ -->
+    <section class="pantalla" id="p-previa" aria-labelledby="t-previa" hidden>
+      <header class="header" data-anim>
+        <button class="icon-btn" id="btn-volver" type="button" aria-label="Volver a editar">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 12H3M10 5l-7 7 7 7"/></svg>
+        </button>
+        <h1 class="header__titulo" id="t-previa" tabindex="-1">Vista previa</h1>
+        <span class="header__lado" aria-hidden="true"></span>
+      </header>
+
+      <div class="contenido">
+        <p class="bajada bajada--centro" data-anim>Así se va a ver en las pantallas de la fachada del cubo post.</p>
+
+        <div class="escena escena--previa">
+          <div class="deco" id="deco-previa" aria-hidden="true"></div>
+          <div class="nota-slot" id="slot-previa"></div>
+        </div>
+
+        <div class="info" data-anim>
+          <div class="info__fila">
+            <span class="info__icono" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><path d="M8 11V8a4 4 0 0 1 8 0v3"/><rect x="5.5" y="11" width="13" height="9" rx="2.5" class="relleno"/></svg>
+            </span>
+            <div><strong>Es anónima</strong><span>Nadie va a saber quién la escribió, solo para quién es.</span></div>
+          </div>
+          <div class="info__fila">
+            <span class="info__icono" aria-hidden="true">
+              <svg viewBox="0 0 24 24"><rect x="3.5" y="5" width="17" height="11.5" rx="2"/><path d="M9 20h6"/></svg>
+            </span>
+            <div><strong>Aparece en pantalla</strong><span>Se suma a la pared mientras la gente hace la fila en el Obelisco.</span></div>
+          </div>
+        </div>
+      </div>
+
+      <footer class="pie" data-anim>
+        <div class="acciones">
+          <button class="btn btn--primario" id="btn-publicar" type="button">
+            <span class="btn__texto">Publicar en pantalla</span>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M14 5l7 7-7 7"/></svg>
+          </button>
+          <button class="btn btn--secundario" id="btn-editar" type="button">Editar mensaje</button>
+        </div>
+        <div class="progreso" aria-label="Paso 2 de 3"><i></i><i class="on"></i><i></i></div>
+      </footer>
+    </section>
+
+    <!-- ============ 3 · PUBLICADA ============ -->
+    <section class="pantalla pantalla--exito" id="p-exito" aria-labelledby="t-exito" hidden>
+      <header class="exito__top" data-anim>
+        <span class="header__lado" aria-hidden="true"></span>
+        <img class="logo" src="assets/logo-post.png" alt="post." width="96" height="44">
+        <button class="icon-btn" id="btn-cerrar" type="button" aria-label="Cerrar y escribir otra">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 5l14 14M19 5L5 19"/></svg>
+        </button>
+      </header>
+
+      <h1 class="exito__titulo" id="t-exito" tabindex="-1" data-anim>¡Tu dedicatoria ya está en pantalla!</h1>
+
+      <div class="escena escena--exito">
+        <div class="bandas" aria-hidden="true"><i></i><i></i></div>
+        <div class="deco" id="deco-exito" aria-hidden="true"></div>
+        <div class="nota-slot" id="slot-exito"></div>
+      </div>
+
+      <p class="sticker" data-texto="¡Publicada!">¡Publicada!</p>
+      <p class="exito__texto" data-anim>Buscala en las pantallas de la fachada mientras hacés la fila. Gracias por reconocer a quien te acompañó.</p>
+
+      <footer class="pie" data-anim>
+        <div class="acciones">
+          <button class="btn btn--primario" id="btn-otra" type="button">
+            <span class="btn__progreso" aria-hidden="true"></span>
+            Escribir otra dedicatoria
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 4v16M4 12h16"/></svg>
+          </button>
+          <button class="btn btn--secundario" id="btn-app" type="button">
+            Volver a la app
+            <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 12h18M14 5l7 7-7 7"/></svg>
+          </button>
+        </div>
+        <p class="aviso-tablet" id="aviso-tablet" hidden></p>
+        <div class="progreso" aria-label="Paso 3 de 3"><i></i><i></i><i class="on"></i></div>
+      </footer>
+    </section>
+  </main>
+
+  <!-- Confirmación al salir -->
+  <dialog class="sheet" id="dlg-salir" aria-labelledby="dlg-titulo">
+    <h2 id="dlg-titulo">¿Salir sin publicar?</h2>
+    <p>Guardamos tu borrador en este teléfono para cuando vuelvas.</p>
+    <div class="acciones">
+      <button class="btn btn--primario" id="dlg-seguir" type="button">Seguir escribiendo</button>
+      <button class="btn btn--secundario" id="dlg-confirmar" type="button">Salir</button>
+    </div>
+  </dialog>
+
+  <div class="toast" id="toast" role="status" aria-live="polite" hidden>
+    <span class="toast__texto"></span>
+    <button class="toast__accion" type="button" hidden></button>
+  </div>
+</body>
+</html>
