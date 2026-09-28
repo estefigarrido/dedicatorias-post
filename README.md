@@ -46,6 +46,25 @@ Devuelve una lista de notas nuevas (solo las visibles):
   Ancho fijo por tamaño (619 / 956 / 1044 / 1299), alto según el texto.
 - Para detectar notas moderadas: `GET …/rest/v1/notas?select=id` devuelve los ids que siguen visibles.
 
+## Unity: el cubo con las 4 pantallas (`unity/CuboPost`)
+
+Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Unity Hub y la escena
+`Assets/Scenes/CuboPost.unity`, y tocar ▶.
+
+- **Cubo a escala real**: planta 13,5 × 9,5 m, 3 m de alto (2,8 m de pantalla LED desde los 20 cm),
+  túnel de entrada de 1,8 m al frente, Plaza de la República con el Obelisco de fondo y gente de 1,70 m como escala.
+- **Pantallas**: fondo negro con luces leves verde y lila que recorren las 4 paredes sin cortes, puntitos
+  (paleta sprout: lima, aqua, violeta) y los anillos, puntos y estrellas de post.
+- **Pared de atrás**: composición post. del Figma, centrada, con cada elemento flotando lento y a destiempo.
+  Las notas van a los costados: la elipse central (43 % del ancho) está bloqueada.
+- **Dedicatorias**: se leen de Supabase cada 2 s. Las nuevas aparecen grandes y se acomodan; las moderadas
+  (`visible = false`) desaparecen solas. Mientras haya pocas reales, se completan con notas de ejemplo.
+- **Cámara**: arrastrar para girar · rueda para acercar · 1-4 cada pared a la altura de la fila · 0 vista general · R giro automático.
+- **Reconstruir la escena** (si se cambian medidas en el código): menú **post. → Construir escena del cubo**.
+
+Código en `Assets/CuboPost/Scripts` (notas, pantallas, Supabase, cámara), el shader del fondo en
+`Assets/CuboPost/Shaders` y el constructor de la escena en `Assets/CuboPost/Editor/ConstruirCubo.cs`.
+
 ## Probar en la compu sin Supabase (opcional)
 
 Con `SUPABASE_URL` vacío, el sitio usa el servidor local: doble clic en `iniciar.bat` y abrir

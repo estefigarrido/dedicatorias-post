@@ -1,2 +1,17 @@
 data/
 
+# Unity (unity/CuboPost): carpetas que Unity regenera solo
+unity/CuboPost/[Ll]ibrary/
+unity/CuboPost/[Tt]emp/
+unity/CuboPost/[Oo]bj/
+unity/CuboPost/[Bb]uild/
+unity/CuboPost/[Bb]uilds/
+unity/CuboPost/[Ll]ogs/
+unity/CuboPost/[Uu]ser[Ss]ettings/
+unity/CuboPost/.vs/
+unity/CuboPost/.idea/
+unity/CuboPost/*.csproj
+unity/CuboPost/*.sln
+unity/CuboPost/*.slnx
+unity/CuboPost/Assets/Capturas/
+unity/CuboPost/Assets/Capturas.meta
