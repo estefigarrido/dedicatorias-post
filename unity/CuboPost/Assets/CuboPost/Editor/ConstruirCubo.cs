@@ -44,13 +44,14 @@ namespace CuboPost.EditorTools
 
             // ---------- contexto ----------
             var contexto = new GameObject("Contexto (plaza)").transform;
-            Caja("Plaza", contexto, new Vector3(0, -0.05f, 10f), new Vector3(240f, 0.1f, 240f), matPlaza);
             Caja("Plaza roja", contexto, new Vector3(0, -0.045f, -1.5f), new Vector3(26f, 0.1f, 22f), matPlazaRoja);
             var obelisco = new GameObject("Obelisco", typeof(MeshFilter), typeof(MeshRenderer));
             obelisco.transform.SetParent(contexto, false);
             obelisco.transform.position = new Vector3(0f, 0f, 48f);
             obelisco.GetComponent<MeshFilter>().sharedMesh = MallaObelisco();
             obelisco.GetComponent<MeshRenderer>().sharedMaterial = matObelisco;
+            // Calles, adoquines, semáforos, faroles, letras BA, edificios y autos.
+            ConstruirEntorno.Construir(contexto);
 
             // ---------- cubo ----------
             var cubo = new GameObject("Cubo post.").transform;
