@@ -47,7 +47,8 @@ namespace CuboPost.EditorTools
             Caja("Plaza roja", contexto, new Vector3(0, -0.045f, -1.5f), new Vector3(26f, 0.1f, 22f), matPlazaRoja);
             var obelisco = new GameObject("Obelisco", typeof(MeshFilter), typeof(MeshRenderer));
             obelisco.transform.SetParent(contexto, false);
-            obelisco.transform.position = new Vector3(0f, 0f, 48f);
+            // En su isla, cruzando Av. Corrientes hacia el sur (según el mapa).
+            obelisco.transform.position = new Vector3(4f, 0f, -38f);
             obelisco.GetComponent<MeshFilter>().sharedMesh = MallaObelisco();
             obelisco.GetComponent<MeshRenderer>().sharedMaterial = matObelisco;
             // Calles, adoquines, semáforos, faroles, letras BA, edificios y autos.
@@ -109,7 +110,11 @@ namespace CuboPost.EditorTools
                 p.name = "Persona";
                 p.transform.SetParent(fila, false);
                 p.transform.localScale = new Vector3(0.45f, 0.85f, 0.45f);
-                p.transform.position = new Vector3((i % 2 == 0 ? 0.12f : -0.1f), 0.85f, -Profundidad / 2f - TunelProfundidad - 0.9f - i * 0.85f);
+                // Sale de la puerta y dobla hacia el oeste, antes del cordón de Corrientes.
+                float zPuerta = -Profundidad / 2f - TunelProfundidad - 0.9f;
+                p.transform.position = i < 2
+                    ? new Vector3(0.05f, 0.85f, zPuerta - i * 0.85f)
+                    : new Vector3(-(i - 1) * 0.85f, 0.85f, zPuerta - 1.7f + (i % 2) * 0.12f);
                 p.GetComponent<MeshRenderer>().sharedMaterial = matPersonas;
             }
 
