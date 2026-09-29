@@ -8,7 +8,7 @@
   const MODO_TABLET = params.get('modo') === 'tablet';
   const REDUCIDO = matchMedia('(prefers-reduced-motion: reduce)').matches;
   const MAX_PARA = 20;
-  const MAX_MSG = 250;
+  const MAX_MSG = 150;
   const MIN_MSG = 3;
   const CLAVE_BORRADOR = 'post-dedicatoria-borrador';
 
@@ -294,7 +294,7 @@
     if (!REDUCIDO) notaPreview.animate({ scale: ['1', '1.06', '1'] }, { duration: 360, easing: 'cubic-bezier(.3,1.5,.5,1)' });
   }));
 
-  const RANGOS = { S: 'hasta 40 caracteres', M: 'de 41 a 120 caracteres', L: 'de 121 a 170 caracteres', XL: 'de 171 a 250 caracteres' };
+  const RANGOS = { S: 'hasta 40 caracteres', M: 'de 41 a 120 caracteres', L: `de 121 a ${MAX_MSG} caracteres` };
   $$('.talle').forEach((b) => b.addEventListener('click', () => {
     toast(`Tamaño ${b.dataset.talle}: ${RANGOS[b.dataset.talle]}. Se ajusta solo mientras escribís.`);
   }));

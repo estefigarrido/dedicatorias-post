@@ -3,7 +3,7 @@
 (() => {
   'use strict';
 
-  const COLORES = { azul: '#7aa1ff', verde: '#49b867', violeta: '#ab8ae6', rosa: '#f79ee1' };
+  const COLORES = { azul: '#7aa1ff', verde: '#49b867', violeta: '#ab8ae6', rosa: '#f79ee1', crema: '#ede8db' };
 
   // Ancho de tarjetita1..4 del Figma (unidades de diseño) y su alto con el texto de ejemplo.
   // El alto real es HUG: crece con el mensaje.

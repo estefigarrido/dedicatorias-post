@@ -9,7 +9,7 @@ namespace CuboPost
     /// <summary>
     /// Lee las dedicatorias que la gente publica desde la web (Supabase).
     /// Solo lee notas visibles: las moderadas (visible = false) no llegan y, si ya estaban
-    /// en pantalla, se avisa con <see cref="NotaOcultada"/>.
+    /// en la rotación, se avisa con <see cref="NotaOcultada"/>.
     /// </summary>
     public class SupabaseNotas : MonoBehaviour
     {
@@ -25,7 +25,7 @@ namespace CuboPost
         [Tooltip("Cuántas notas (las más recientes) se cargan al arrancar.")]
         public int cargaInicial = 60;
 
-        /// <summary>Nota nueva. El bool es true si llegó en la carga inicial (sin animación de llegada).</summary>
+        /// <summary>Nota nueva. El bool es true si llegó en la carga inicial: entra a la rotación, no aparece al instante.</summary>
         public event Action<Nota, bool> NotaRecibida;
         public event Action<long> NotaOcultada;
 
@@ -33,7 +33,7 @@ namespace CuboPost
 
         const string Campos = "id,para,mensaje,color,hex,tamano,creada";
         long ultimoId;
-        readonly HashSet<long> enPantalla = new HashSet<long>();
+        readonly HashSet<long> conocidas = new HashSet<long>();
         bool avisoError;
 
         IEnumerator Start()
@@ -73,16 +73,16 @@ namespace CuboPost
             while (true)
             {
                 yield return espera;
-                if (enPantalla.Count == 0) continue;
+                if (conocidas.Count == 0) continue;
                 yield return Consultar("select=id", notas =>
                 {
                     var visibles = new HashSet<long>();
                     foreach (var n in notas) visibles.Add(n.id);
                     var ocultas = new List<long>();
-                    foreach (var id in enPantalla) if (!visibles.Contains(id)) ocultas.Add(id);
+                    foreach (var id in conocidas) if (!visibles.Contains(id)) ocultas.Add(id);
                     foreach (var id in ocultas)
                     {
-                        enPantalla.Remove(id);
+                        conocidas.Remove(id);
                         NotaOcultada?.Invoke(id);
                     }
                 });
@@ -91,9 +91,9 @@ namespace CuboPost
 
         void Entregar(Nota n, bool inicial)
         {
-            if (n == null || enPantalla.Contains(n.id)) return;
+            if (n == null || conocidas.Contains(n.id)) return;
             ultimoId = Math.Max(ultimoId, n.id);
-            enPantalla.Add(n.id);
+            conocidas.Add(n.id);
             NotaRecibida?.Invoke(n, inicial);
         }
 
@@ -121,8 +121,5 @@ namespace CuboPost
                 alRecibir(lista?.items ?? Array.Empty<Nota>());
             }
         }
-
-        /// <summary>Para que el controlador libere el id cuando una nota sale de pantalla.</summary>
-        public void Olvidar(long id) => enPantalla.Remove(id);
     }
 }

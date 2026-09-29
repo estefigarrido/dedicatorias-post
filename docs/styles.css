@@ -425,7 +425,7 @@ form { margin: 0; }
    ├ Subtract = banda de 150 con festón (círculos Ø63 cada 85, el primero en x 24)
    └ Frame 22 = vertical, padding 50 / 100 / 150 / 100, gap 50, alto HUG
        ├ "para: …"  JetBrains Mono ExtraBold 64, alto de línea auto (84)
-       └ mensaje    Inter Regular 64, alto de línea auto (≈77)
+       └ mensaje    Reddit Sans SemiBold 64, alto de línea auto (≈77)
    Relleno del color al 80 %. */
 .nota-wrap {
   --u: .17px;
@@ -466,7 +466,7 @@ form { margin: 0; }
 }
 .nota__msg {
   margin: 0;
-  font: 400 calc(64 * var(--u)) / calc(77.45 * var(--u)) 'Inter', system-ui, sans-serif;
+  font: 600 calc(64 * var(--u)) / calc(77.45 * var(--u)) 'Reddit Sans', system-ui, sans-serif;
   overflow-wrap: anywhere;
 }
 .nota.sin-nombre .nota__nombre, .nota.vacia .nota__msg { opacity: .5; }

@@ -8,20 +8,32 @@
 create table if not exists public.notas (
   id       bigint generated always as identity primary key,
   para     text not null check (char_length(para) between 1 and 20),
-  mensaje  text not null check (char_length(mensaje) between 3 and 250),
-  color    text not null default 'verde' check (color in ('azul', 'verde', 'violeta', 'rosa')),
+  mensaje  text not null,
+  color    text not null default 'verde',
   -- Tamaño de la notita (tarjetita1..4 del Figma), según el largo del mensaje.
   tamano   text generated always as (
              case when char_length(mensaje) <= 40  then 'S'
                   when char_length(mensaje) <= 120 then 'M'
                   when char_length(mensaje) <= 170 then 'L'
                   else 'XL' end) stored,
-  hex      text generated always as (
-             case color when 'azul' then '#7aa1ff' when 'verde' then '#49b867'
-                        when 'violeta' then '#ab8ae6' else '#f79ee1' end) stored,
   visible  boolean not null default true,   -- moderación: poner en false para sacarla de pantalla
   creada   timestamptz not null default now()
 );
+
+-- Reglas de largo y colores (se actualizan también en una tabla que ya existía).
+-- "not valid": las notas viejas de hasta 250 caracteres quedan como están; las nuevas, máximo 150.
+alter table public.notas drop constraint if exists notas_mensaje_check;
+alter table public.notas add constraint notas_mensaje_check
+  check (char_length(mensaje) between 3 and 150) not valid;
+alter table public.notas drop constraint if exists notas_color_check;
+alter table public.notas add constraint notas_color_check
+  check (color in ('azul', 'verde', 'violeta', 'rosa', 'crema'));
+
+-- Color en hex, calculado desde el nombre.
+alter table public.notas drop column if exists hex;
+alter table public.notas add column hex text generated always as (
+  case color when 'azul' then '#7aa1ff' when 'verde' then '#49b867'
+             when 'violeta' then '#ab8ae6' when 'crema' then '#ede8db' else '#f79ee1' end) stored;
 
 -- 2) Filtro de moderación (mismo criterio que moderacion.js) --------
 create or replace function public.post_normalizar(t text)

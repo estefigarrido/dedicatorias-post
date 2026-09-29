@@ -42,7 +42,6 @@
               <button type="button" class="talle" data-talle="S">S</button>
               <button type="button" class="talle" data-talle="M">M</button>
               <button type="button" class="talle" data-talle="L">L</button>
-              <button type="button" class="talle" data-talle="XL">XL</button>
             </div>
           </div>
         </div>
@@ -64,9 +63,9 @@
           <div class="campo" id="campo-msg" data-anim>
             <label class="campo__label" for="in-msg">Tu mensaje</label>
             <div class="textarea">
-              <textarea id="in-msg" name="mensaje" maxlength="250" rows="3" placeholder="Gracias por…"
+              <textarea id="in-msg" name="mensaje" maxlength="150" rows="3" placeholder="Gracias por…"
                         enterkeyhint="done" aria-describedby="err-msg cont-msg"></textarea>
-              <span class="contador contador--in" id="cont-msg">0 / 250</span>
+              <span class="contador contador--in" id="cont-msg">0 / 150</span>
             </div>
             <span class="campo__error" id="err-msg" aria-live="polite"></span>
           </div>
@@ -78,6 +77,7 @@
               <label class="swatch"><input type="radio" name="color" value="verde" checked><span class="swatch__c" style="--c:#49b867"></span><span class="sr">Verde</span></label>
               <label class="swatch"><input type="radio" name="color" value="violeta"><span class="swatch__c" style="--c:#ab8ae6"></span><span class="sr">Violeta</span></label>
               <label class="swatch"><input type="radio" name="color" value="rosa"><span class="swatch__c" style="--c:#f79ee1"></span><span class="sr">Rosa</span></label>
+              <label class="swatch"><input type="radio" name="color" value="crema"><span class="swatch__c" style="--c:#ede8db"></span><span class="sr">Crema</span></label>
             </div>
           </fieldset>
         </form>

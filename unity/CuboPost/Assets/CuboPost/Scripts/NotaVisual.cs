@@ -10,7 +10,7 @@ namespace CuboPost
     ///   ├ Banda  = 150 de alto con festón (círculos Ø63 cada 85, el primero en x 24)
     ///   └ Cuerpo = vertical, padding 50 / 100 / 150 / 100, gap 50, alto HUG
     ///       ├ "para: …"  JetBrains Mono ExtraBold 64
-    ///       └ mensaje    Inter Regular 64
+    ///       └ mensaje    Reddit Sans SemiBold 64
     /// Relleno del color al 80 %.
     /// </summary>
     public class NotaVisual : MonoBehaviour

@@ -18,9 +18,9 @@ $datosArchivo = Join-Path $datosDir 'notas.json'
 New-Item -ItemType Directory -Force $datosDir | Out-Null
 $utf8 = New-Object System.Text.UTF8Encoding($false)
 
-$COLORES = @{ azul = '#7aa1ff'; verde = '#49b867'; violeta = '#ab8ae6'; rosa = '#f79ee1' }
+$COLORES = @{ azul = '#7aa1ff'; verde = '#49b867'; violeta = '#ab8ae6'; rosa = '#f79ee1'; crema = '#ede8db' }
 $MAX_PARA = 20
-$MAX_MSG = 250
+$MAX_MSG = 150
 $MIN_MSG = 3
 $ESPERA_SEG = 10   # tiempo mínimo entre publicaciones desde un mismo dispositivo
 

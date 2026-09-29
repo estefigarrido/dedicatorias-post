@@ -42,7 +42,9 @@ Devuelve una lista de notas nuevas (solo las visibles):
 ```
 
 - Consultar cada 1–2 s pasando el último `id` mostrado.
-- `tamano` es S / M / L / XL (tarjetita1–4 del Figma): S ≤ 40 caracteres, M ≤ 120, L ≤ 170, XL ≤ 250.
+- `tamano` es S / M / L (tarjetita1–3 del Figma): S ≤ 40 caracteres, M ≤ 120, L hasta el máximo de 150. XL solo aparece en notas viejas de más de 170.
+- `color` puede ser azul, verde, violeta, rosa o crema (#ede8db).
+- En Unity cada nota aparece en 1 s (opacidad 0 → 100 %), queda 15 s y desaparece en 1 s. Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas. La más chica mide 70 cm de ancho.
   Ancho fijo por tamaño (619 / 956 / 1044 / 1299), alto según el texto.
 - Para detectar notas moderadas: `GET …/rest/v1/notas?select=id` devuelve los ids que siguen visibles.
 

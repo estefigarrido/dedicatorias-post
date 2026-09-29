@@ -16,8 +16,8 @@ namespace CuboPost
         /// <summary>JetBrains Mono ExtraBold: el "para:" de las notas.</summary>
         public static TMP_FontAsset FuenteMono => mono ??= Cargar("Fuentes/JetBrainsMono-ExtraBold");
 
-        /// <summary>Inter Regular (mensaje). Si no está en Resources/Fuentes, usa la de TextMeshPro.</summary>
-        public static TMP_FontAsset FuenteTexto => texto ??= Cargar("Fuentes/Inter-Regular");
+        /// <summary>Reddit Sans SemiBold (mensaje), igual que en la web. Si falta, usa la de TextMeshPro.</summary>
+        public static TMP_FontAsset FuenteTexto => texto ??= Cargar("Fuentes/RedditSans-SemiBold");
 
         static TMP_FontAsset Cargar(string ruta)
         {

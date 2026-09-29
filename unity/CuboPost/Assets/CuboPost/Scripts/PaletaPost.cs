@@ -14,6 +14,7 @@ namespace CuboPost
         public static readonly Color NotaVerde = Hex("#49b867");
         public static readonly Color NotaVioleta = Hex("#ab8ae6");
         public static readonly Color NotaRosa = Hex("#f79ee1");
+        public static readonly Color NotaCrema = Hex("#ede8db");
 
         // Paleta "sprout" para los puntitos (estilo de las pantallas SPOT!).
         public static readonly Color SproutLima = Hex("#b4fa5a");
@@ -35,6 +36,7 @@ namespace CuboPost
                 case "azul": return NotaAzul;
                 case "violeta": return NotaVioleta;
                 case "rosa": return NotaRosa;
+                case "crema": return NotaCrema;
                 default: return NotaVerde;
             }
         }
@@ -51,7 +53,7 @@ namespace CuboPost
             }
         }
 
-        /// <summary>Mismo corte que la web y la base: S ≤ 40, M ≤ 120, L ≤ 170, XL ≤ 250 caracteres.</summary>
+        /// <summary>Mismo corte que la web y la base: S ≤ 40, M ≤ 120, L ≤ 170, XL el resto (notas viejas de hasta 250).</summary>
         public static string TamanoPorLargo(int largo)
         {
             if (largo <= 40) return "S";

@@ -1,4 +1,4 @@
-using System;
+﻿using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -20,6 +20,14 @@ namespace CuboPost
         [Tooltip("Metros por unidad de diseño del Figma. 0.001 → una nota XL mide 1,3 m de ancho y el texto ~6 cm.")]
         public float metrosPorUnidad = 0.001f;
 
+        [Header("Notas")]
+        [Tooltip("Ancho mínimo de la nota más chica (S), en metros. Las demás crecen en la misma proporción.")]
+        public float anchoMinimoNota = 0.70f;
+        [Tooltip("Segundos que cada nota queda visible con opacidad completa.")]
+        public float segundosVisible = 15f;
+        [Tooltip("Duración de la aparición (opacidad 0 → 100 %) y de la desaparición (100 → 0 %).")]
+        public float segundosTransicion = 1f;
+
         [Header("Dónde pueden ir las notas (metros)")]
         public float margenArriba = 0.22f;
         public float margenAbajo = 0.3f;
@@ -40,11 +48,10 @@ namespace CuboPost
         [Tooltip("Ancho que ocupa la composición, de la estrella izquierda al último punto (metros).")]
         public float anchoComposicion = 3.8f;
 
-        /// <summary>Se dispara cuando una nota sale de esta pantalla (moderada o por falta de lugar).</summary>
+        /// <summary>Se dispara cuando una nota sale de esta pantalla (terminó su tiempo, moderada o falta de lugar).</summary>
         public event Action<Nota> NotaRetirada;
 
         public int Cantidad => notas.Count;
-        public bool TieneEjemplos => notas.Exists(n => n.nota.demo);
         public bool Contiene(string mensaje) => notas.Exists(n => n.nota.mensaje == mensaje);
 
         /// <summary>Qué tan llena está: área de notas / área libre (sin túnel ni elipse).</summary>
@@ -53,7 +60,11 @@ namespace CuboPost
             get
             {
                 float area = 0;
-                foreach (var n in notas) area += n.Tamano.x * n.Tamano.y;
+                foreach (var n in notas)
+                {
+                    var m = Medida(n);
+                    area += m.x * m.y;
+                }
                 var util = AreaUtil;
                 float libre = util.width * util.height;
                 foreach (var z in zonasBloqueadas) libre -= Interseccion(util, AUnidades(z));
@@ -66,9 +77,13 @@ namespace CuboPost
         RectTransform lienzo, capaDecoAtras, capaNotas, capaDecoAdelante;
         readonly List<NotaVisual> notas = new List<NotaVisual>();
         readonly Dictionary<NotaVisual, Vector2> destinos = new Dictionary<NotaVisual, Vector2>();
+        readonly Dictionary<NotaVisual, Coroutine> ciclos = new Dictionary<NotaVisual, Coroutine>();
         bool inicializada;
 
         float U(float metros) => metros / metrosPorUnidad;
+        float EscalaNota => Mathf.Max(1f, anchoMinimoNota / (PaletaPost.AnchoNota("S") * metrosPorUnidad));
+        /// <summary>Tamaño de la nota en pantalla (unidades), ya escalada al mínimo de 70 cm.</summary>
+        Vector2 Medida(NotaVisual nv) => nv.Tamano * EscalaNota;
         Rect AUnidades(Rect m) => new Rect(U(m.x), U(m.y), U(m.width), U(m.height));
         Vector2 TamanoLienzo => new Vector2(U(largo), U(alto));
 
@@ -132,11 +147,14 @@ namespace CuboPost
 
         // ---------------- notas ----------------
 
-        public void Agregar(Nota n, bool llegadaDestacada, float retardo = 0f)
+        /// <summary>
+        /// Muestra una nota: aparece (opacidad 0 → 100 %), queda <see cref="segundosVisible"/> y desaparece.
+        /// </summary>
+        public void Agregar(Nota n, float retardo = 0f)
         {
             Inicializar();
             var nv = NotaVisual.Crear(n, capaNotas);
-            var tam = nv.Tamano;
+            var tam = Medida(nv);
 
             if (!BuscarLugar(tam, out var centro))
             {
@@ -150,7 +168,7 @@ namespace CuboPost
             notas.Add(nv);
             destinos[nv] = centro;
             nv.rt.localRotation = Quaternion.Euler(0, 0, UnityEngine.Random.Range(-5f, 5f));
-            StartCoroutine(llegadaDestacada ? Llegada(nv, centro) : Aparecer(nv, centro, retardo));
+            ciclos[nv] = StartCoroutine(Ciclo(nv, centro, retardo));
         }
 
         public bool Quitar(long id)
@@ -179,6 +197,8 @@ namespace CuboPost
 
         void Retirar(NotaVisual nv)
         {
+            if (ciclos.TryGetValue(nv, out var ciclo) && ciclo != null) StopCoroutine(ciclo);
+            ciclos.Remove(nv);
             notas.Remove(nv);
             destinos.Remove(nv);
             NotaRetirada?.Invoke(nv.nota);
@@ -225,7 +245,7 @@ namespace CuboPost
             if (TocaZona(r)) return true;
             foreach (var kv in destinos)
             {
-                var t = kv.Key.Tamano;
+                var t = Medida(kv.Key);
                 if (r.Overlaps(new Rect(kv.Value.x - t.x / 2, kv.Value.y - t.y / 2, t.x, t.y))) return true;
             }
             return false;
@@ -251,77 +271,33 @@ namespace CuboPost
 
         // ---------------- animaciones ----------------
 
-        static float SalidaRebote(float t)
-        {
-            const float c1 = 1.70158f, c3 = c1 + 1f;
-            return 1f + c3 * Mathf.Pow(t - 1f, 3) + c1 * Mathf.Pow(t - 1f, 2);
-        }
-
-        static float Suave(float t) => t * t * (3f - 2f * t);
-
-        IEnumerator Aparecer(NotaVisual nv, Vector2 destino, float retardo)
+        /// <summary>Aparece (opacidad 0 → 100 %), queda visible y desaparece (100 → 0 %).</summary>
+        IEnumerator Ciclo(NotaVisual nv, Vector2 destino, float retardo)
         {
             nv.rt.anchoredPosition = destino;
-            nv.rt.localScale = Vector3.zero;
+            nv.rt.localScale = Vector3.one * EscalaNota;
             nv.grupo.alpha = 0f;
             if (retardo > 0) yield return new WaitForSeconds(retardo);
-            for (float t = 0; t < 1f; t += Time.deltaTime / 0.5f)
-            {
-                if (nv == null) yield break;
-                nv.rt.localScale = Vector3.one * SalidaRebote(t);
-                nv.grupo.alpha = Mathf.Clamp01(t * 2f);
-                yield return null;
-            }
-            if (nv == null) yield break;
-            nv.rt.localScale = Vector3.one;
-            nv.grupo.alpha = 1f;
-        }
 
-        /// <summary>
-        /// Dedicatoria recién publicada: aparece grande y después se acomoda en su lugar.
-        /// En la pared de atrás aparece sobre su lugar (no en el centro) para no tapar el logo.
-        /// </summary>
-        IEnumerator Llegada(NotaVisual nv, Vector2 destino)
-        {
-            var area = AreaUtil;
-            var inicio = composicionCentral || zonasElipse.Count > 0 ? destino : area.center;
-            float grande = inicio == destino ? 1.25f : 1.45f;
-            nv.rt.SetAsLastSibling();
-            nv.rt.anchoredPosition = inicio;
-            nv.rt.localScale = Vector3.zero;
+            for (float t = 0; t < 1f; t += Time.deltaTime / segundosTransicion)
+            {
+                nv.grupo.alpha = t;
+                yield return null;
+            }
             nv.grupo.alpha = 1f;
-            var giroFinal = nv.rt.localRotation;
 
-            for (float t = 0; t < 1f; t += Time.deltaTime / 0.6f)
-            {
-                if (nv == null) yield break;
-                nv.rt.localScale = Vector3.one * grande * SalidaRebote(t);
-                nv.rt.localRotation = Quaternion.Euler(0, 0, Mathf.Lerp(-12f, 0f, t));
-                yield return null;
-            }
-            yield return new WaitForSeconds(3f);
-            for (float t = 0; t < 1f; t += Time.deltaTime / 1.2f)
-            {
-                if (nv == null) yield break;
-                float e = Suave(t);
-                nv.rt.anchoredPosition = Vector2.Lerp(inicio, destino, e);
-                nv.rt.localScale = Vector3.one * Mathf.Lerp(grande, 1f, e);
-                nv.rt.localRotation = Quaternion.Slerp(Quaternion.identity, giroFinal, e);
-                yield return null;
-            }
-            if (nv == null) yield break;
-            nv.rt.anchoredPosition = destino;
-            nv.rt.localScale = Vector3.one;
-            nv.rt.localRotation = giroFinal;
+            yield return new WaitForSeconds(segundosVisible);
+            ciclos.Remove(nv);
+            if (notas.Contains(nv)) Retirar(nv);
         }
 
         IEnumerator Desaparecer(NotaVisual nv)
         {
-            for (float t = 0; t < 1f; t += Time.deltaTime / 0.6f)
+            float desde = nv.grupo.alpha;
+            for (float t = 0; t < 1f; t += Time.deltaTime / segundosTransicion)
             {
                 if (nv == null) yield break;
-                nv.grupo.alpha = 1f - t;
-                nv.rt.localScale = Vector3.one * Mathf.Lerp(1f, 0.85f, t);
+                nv.grupo.alpha = desde * (1f - t);
                 yield return null;
             }
             if (nv != null) Destroy(nv.gameObject);

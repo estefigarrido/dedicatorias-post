@@ -1,23 +1,35 @@
+using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
 
 namespace CuboPost
 {
     /// <summary>
-    /// Reparte las dedicatorias entre las 4 pantallas (siempre en la menos ocupada) y, mientras
-    /// haya pocas reales, completa con notas de ejemplo que se van reemplazando.
+    /// Reparte las dedicatorias entre las 4 pantallas (siempre en la menos ocupada).
+    /// Cada nota se ve un rato y desaparece (ver <see cref="ParedPantalla"/>):
+    ///   · las que llegan desde la web aparecen apenas se publican;
+    ///   · mientras tanto rotan las que ya se habían enviado, de a una;
+    ///   · si todavía no hay ninguna real, rotan las notas de ejemplo.
     /// </summary>
     public class ControladorCubo : MonoBehaviour
     {
         public SupabaseNotas fuente;
         public ParedPantalla[] paredes;
 
-        [Header("Notas de ejemplo")]
-        public bool mostrarEjemplos = true;
-        public int ejemplosPorPared = 7;
+        [Header("Rotación")]
+        [Tooltip("Cuántas notas de la rotación puede tener cada pantalla a la vez. Las recién publicadas aparecen igual.")]
+        public int notasPorPantalla = 3;
+        [Tooltip("Cada cuántos segundos entra la próxima nota de la rotación.")]
+        public float segundosEntreNotas = 3f;
 
-        readonly Dictionary<long, ParedPantalla> dondeEsta = new Dictionary<long, ParedPantalla>();
-        int llegadasIniciales;
+        [Header("Notas de ejemplo")]
+        [Tooltip("Si todavía no hay dedicatorias reales, rotan estas.")]
+        public bool mostrarEjemplos = true;
+
+        readonly List<Nota> historial = new List<Nota>();
+        readonly List<Nota> ejemplos = new List<Nota>();
+        readonly Dictionary<long, ParedPantalla> enPantalla = new Dictionary<long, ParedPantalla>();
+        int siguienteHistorial, siguienteEjemplo;
 
         static readonly (string para, string mensaje, string color)[] Ejemplos =
         {
@@ -25,15 +37,14 @@ namespace CuboPost
             ("mamá", "Gracias por bancarme en cada carrera, aunque fuera a las 6 de la mañana.", "rosa"),
             ("nacho", "Gracias por esperarme en cada kilómetro. Sin vos no llegaba a los 21k.", "verde"),
             ("el grupo del parque", "Los martes a las 7 no serían lo mismo sin ustedes.", "violeta"),
-            ("delfi", "Me enseñaste a respirar cuando quería largar todo.", "azul"),
+            ("delfi", "Me enseñaste a respirar cuando quería largar todo.", "crema"),
             ("abuelo", "Por las caminatas de los domingos que me hicieron amar moverme.", "verde"),
             ("cami", "Primer 10k juntas. Van muchos más.", "rosa"),
             ("mi kine", "Volví a correr después de la lesión gracias a tu paciencia infinita.", "violeta"),
             ("juli", "Sos la razón por la que no me quedo en la cama los sábados.", "azul"),
             ("entrenador", "Cada estiramiento que me hiciste repetir valió la pena. Hoy corro sin dolor y te lo debo a vos.", "verde"),
-            ("vos", "Gracias por acompañarme en cada entrenamiento bajo la lluvia, por los mates después de las series y por recordarme que parar también es avanzar. Nos vemos en la próxima carrera, compañero de ruta.", "violeta"),
-            ("lu", "Por creer en mí antes que yo.", "rosa"),
-            ("team peaks", "Arrancamos siendo desconocidos y hoy son mi familia de los domingos. Gracias por cada kilómetro compartido y cada abrazo al llegar.", "azul"),
+            ("lu", "Por creer en mí antes que yo.", "crema"),
+            ("team peaks", "Arrancamos siendo desconocidos y hoy son mi familia de los domingos. Gracias por cada kilómetro.", "azul"),
             ("papá", "Me enseñaste a no rendirme en la última cuadra.", "verde"),
             ("sofi", "Gracias por esperarme siempre al final, aunque llegara última.", "violeta"),
             ("martín", "Ese empujón en el km 30 me salvó la maratón.", "rosa"),
@@ -44,73 +55,86 @@ namespace CuboPost
             foreach (var p in paredes)
             {
                 p.Inicializar();
-                p.NotaRetirada += AlRetirar;
+                p.NotaRetirada += n => enPantalla.Remove(n.id);
             }
 
-            if (mostrarEjemplos) CargarEjemplos();
+            for (int i = 0; i < Ejemplos.Length; i++)
+            {
+                var e = Ejemplos[i];
+                ejemplos.Add(new Nota { id = -(i + 1), para = e.para, mensaje = e.mensaje, color = e.color, demo = true });
+            }
+            Mezclar(ejemplos);
 
             if (fuente != null)
             {
                 fuente.NotaRecibida += Recibir;
                 fuente.NotaOcultada += Ocultar;
             }
+
+            StartCoroutine(Rotar());
         }
 
-        void CargarEjemplos()
-        {
-            // Orden mezclado para que cada pared tenga notas de distintos colores y tamaños.
-            var orden = new List<int>();
-            for (int i = 0; i < Ejemplos.Length; i++) orden.Add(i);
-            for (int i = orden.Count - 1; i > 0; i--)
-            {
-                int j = Random.Range(0, i + 1);
-                (orden[i], orden[j]) = (orden[j], orden[i]);
-            }
-            string[] colores = { "azul", "verde", "violeta", "rosa" };
-
-            int total = ejemplosPorPared * paredes.Length;
-            for (int i = 0; i < total; i++)
-            {
-                var e = Ejemplos[orden[i % orden.Count]];
-                // Si un ejemplo se repite, cambia de color.
-                string color = i < orden.Count ? e.color : colores[Random.Range(0, colores.Length)];
-                var n = new Nota { id = -(i + 1), para = e.para, mensaje = e.mensaje, color = color, demo = true };
-                // La pared con más lugar libre que todavía no tenga ese mismo texto.
-                var p = ElegirPared(n.mensaje);
-                p.Agregar(n, false, 0.3f + i * 0.12f);
-                dondeEsta[n.id] = p;
-            }
-        }
-
+        /// <summary>inicial = true: nota vieja (carga al arrancar), entra a la rotación sin mostrarse ya.</summary>
         void Recibir(Nota n, bool inicial)
         {
-            var p = ElegirPared();
-            // Cada dedicatoria real reemplaza un ejemplo, si quedan.
-            p.QuitarUnEjemplo();
-            float retardo = inicial ? 0.2f + (llegadasIniciales++) * 0.08f : 0f;
-            p.Agregar(n, !inicial, retardo);
-            dondeEsta[n.id] = p;
+            if (historial.Exists(x => x.id == n.id)) return;
+            historial.Add(n);
+            if (!inicial) Mostrar(n, ElegirPared(n.mensaje));
         }
 
         void Ocultar(long id)
         {
-            if (dondeEsta.TryGetValue(id, out var p)) p.Quitar(id);
+            historial.RemoveAll(x => x.id == id);
+            if (enPantalla.TryGetValue(id, out var p)) p.Quitar(id);
         }
 
-        void AlRetirar(Nota n)
+        IEnumerator Rotar()
         {
-            dondeEsta.Remove(n.id);
-            if (!n.demo && fuente != null) fuente.Olvidar(n.id);
+            yield return new WaitForSeconds(1f);
+            var espera = new WaitForSeconds(segundosEntreNotas);
+            while (true)
+            {
+                var p = ParedConLugar();
+                if (p != null)
+                {
+                    var n = historial.Count > 0 ? Proxima(historial, ref siguienteHistorial)
+                          : mostrarEjemplos ? Proxima(ejemplos, ref siguienteEjemplo)
+                          : null;
+                    if (n != null) Mostrar(n, p);
+                }
+                yield return espera;
+            }
         }
 
-        ParedPantalla ElegirPared(string evitarMensaje = null)
+        void Mostrar(Nota n, ParedPantalla p)
         {
-            ParedPantalla mejor = paredes[0];
+            if (enPantalla.ContainsKey(n.id)) return;
+            enPantalla[n.id] = p;
+            p.Agregar(n);
+        }
+
+        /// <summary>La siguiente de la lista (en orden, dando la vuelta) que no esté ya en pantalla.</summary>
+        Nota Proxima(List<Nota> lista, ref int indice)
+        {
+            for (int i = 0; i < lista.Count; i++)
+            {
+                int k = (indice + i) % lista.Count;
+                if (enPantalla.ContainsKey(lista[k].id)) continue;
+                indice = k + 1;
+                return lista[k];
+            }
+            return null;
+        }
+
+        /// <summary>La pantalla menos ocupada que todavía tenga lugar en la rotación.</summary>
+        ParedPantalla ParedConLugar()
+        {
+            ParedPantalla mejor = null;
             float menor = float.MaxValue;
             foreach (var p in paredes)
             {
+                if (p.Cantidad >= notasPorPantalla) continue;
                 float o = p.Ocupacion + Random.Range(0f, 0.03f);
-                if (evitarMensaje != null && p.Contiene(evitarMensaje)) o += 10f;
                 if (o < menor)
                 {
                     menor = o;
@@ -118,6 +142,32 @@ namespace CuboPost
                 }
             }
             return mejor;
+        }
+
+        ParedPantalla ElegirPared(string evitarMensaje)
+        {
+            ParedPantalla mejor = paredes[0];
+            float menor = float.MaxValue;
+            foreach (var p in paredes)
+            {
+                float o = p.Ocupacion + Random.Range(0f, 0.03f);
+                if (p.Contiene(evitarMensaje)) o += 10f;
+                if (o < menor)
+                {
+                    menor = o;
+                    mejor = p;
+                }
+            }
+            return mejor;
+        }
+
+        static void Mezclar(List<Nota> lista)
+        {
+            for (int i = lista.Count - 1; i > 0; i--)
+            {
+                int j = Random.Range(0, i + 1);
+                (lista[i], lista[j]) = (lista[j], lista[i]);
+            }
         }
     }
 }
