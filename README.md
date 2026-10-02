@@ -53,14 +53,18 @@ Devuelve una lista de notas nuevas (solo las visibles):
 Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Unity Hub y la escena
 `Assets/Scenes/CuboPost.unity`, y tocar ▶.
 
-- **Cubo a escala real**: planta 13,5 × 9,5 m, 3 m de alto (2,8 m de pantalla LED desde los 20 cm),
-  túnel de entrada de 1,8 m al frente, Plaza de la República con el Obelisco de fondo y gente de 1,70 m como escala.
+- **Cubo a escala real**: planta 20 × 10 m, 4 m de alto (3,3 m de pantalla LED desde los 20 cm, hasta los 3,50 m,
+  más 0,50 m de coronamiento), entrada de 3 × 2,8 m centrada en el lateral izquierdo, Plaza de la República con
+  el Obelisco de fondo y gente de 1,70 m como escala. Las medidas están al principio de
+  `Assets/CuboPost/Editor/ConstruirCubo.cs`: al cambiarlas, Unity actualiza el cubo de la escena solo
+  (o con el menú **post. → Actualizar solo el cubo**), sin tocar la plaza.
 - **Pantallas**: fondo negro con luces leves verde y lila que recorren las 4 paredes sin cortes, puntitos
   (paleta sprout: lima, aqua, violeta) y los anillos, puntos y estrellas de post.
 - **Pared de atrás**: composición post. del Figma, centrada, con cada elemento flotando lento y a destiempo.
   Las notas van a los costados: la elipse central (43 % del ancho) está bloqueada.
-- **Dedicatorias**: se leen de Supabase cada 2 s. Las nuevas aparecen grandes y se acomodan; las moderadas
-  (`visible = false`) desaparecen solas. Mientras haya pocas reales, se completan con notas de ejemplo.
+- **Dedicatorias**: se leen de Supabase cada 2 s. Cada una aparece en 1 s, queda 15 s y se va en 1 s.
+  Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas (o las de ejemplo si no hay
+  ninguna). Las moderadas (`visible = false`) desaparecen solas.
 - **Cámara**: arrastrar para girar · rueda para acercar · 1-4 cada pared a la altura de la fila · 0 vista general · R giro automático.
 - **Reconstruir la escena** (si se cambian medidas en el código): menú **post. → Construir escena del cubo**.
 

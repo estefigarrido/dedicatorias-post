@@ -9,14 +9,14 @@ namespace CuboPost
     /// <summary>
     /// Una de las 4 pantallas LED de la fachada. Dibuja los puntitos y objetos flotantes, la
     /// composición de post. (en la pared de atrás) y las dedicatorias, sin que se pisen entre sí
-    /// ni con las zonas bloqueadas (el túnel, la elipse central de la composición).
+    /// ni con las zonas bloqueadas (la entrada, la elipse central de la composición).
     /// El GameObject mira hacia adentro del cubo: su +Z es la dirección en la que mira el público.
     /// </summary>
     public class ParedPantalla : MonoBehaviour
     {
         [Header("Medidas de la pantalla (metros)")]
-        public float largo = 13.5f;
-        public float alto = 2.8f;
+        public float largo = 20f;
+        public float alto = 3.3f;
         [Tooltip("Metros por unidad de diseño del Figma. 0.001 → una nota XL mide 1,3 m de ancho y el texto ~6 cm.")]
         public float metrosPorUnidad = 0.001f;
 

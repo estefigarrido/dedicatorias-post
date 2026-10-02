@@ -21,14 +21,16 @@ namespace CuboPost
         public float suavizado = 4f;
 
         [Header("Medidas del cubo (para las vistas 1-4)")]
-        public float ancho = 13.5f;
-        public float profundidad = 9.5f;
+        public float ancho = 20f;
+        public float profundidad = 10f;
 
         Vector3 objetivoActual;
         float distanciaActual, giroActual, inclinacionActual;
+        float distanciaGeneral;   // la de la vista general (tecla 0): la que tenía al arrancar
 
         void Start()
         {
+            distanciaGeneral = distancia;
             objetivoActual = objetivo;
             distanciaActual = distancia;
             giroActual = giro;
@@ -64,7 +66,7 @@ namespace CuboPost
                 if (teclado.digit0Key.wasPressedThisFrame)
                 {
                     objetivo = new Vector3(0f, 1.6f, 0f);
-                    distancia = 24f;
+                    distancia = distanciaGeneral;
                     giro = -32f;
                     inclinacion = 14f;
                 }
