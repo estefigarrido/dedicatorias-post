@@ -5,6 +5,8 @@ namespace CuboPost
     /// <summary>Colores de la marca post. / SPOT! y medidas de las notitas del Figma.</summary>
     public static class PaletaPost
     {
+        // Estilos de color del Figma (componente "Punto", marca POST).
+        /// <summary>Negro de la marca: fondo de las pantallas y relleno de los puntos y estrellas.</summary>
         public static readonly Color Oscuro = Hex("#252525");
         public static readonly Color Crema = Hex("#ede8db");
         public static readonly Color Verde = Hex("#49b867");
@@ -15,11 +17,6 @@ namespace CuboPost
         public static readonly Color NotaVioleta = Hex("#ab8ae6");
         public static readonly Color NotaRosa = Hex("#f79ee1");
         public static readonly Color NotaCrema = Hex("#ede8db");
-
-        // Paleta "sprout" para los puntitos (estilo de las pantallas SPOT!).
-        public static readonly Color SproutLima = Hex("#b4fa5a");
-        public static readonly Color SproutAqua = Hex("#14dcf0");
-        public static readonly Color SproutVioleta = Hex("#9b64ff");
 
         /// <summary>Opacidad del relleno de las notas (en el Figma es 80 %).</summary>
         public const float OpacidadNota = 0.8f;

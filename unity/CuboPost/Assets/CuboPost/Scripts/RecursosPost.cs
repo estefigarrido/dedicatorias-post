@@ -5,7 +5,8 @@ using UnityEngine;
 namespace CuboPost
 {
     /// <summary>
-    /// Texturas (festón de las notas, objetos flotantes, composición post.) y tipografías.
+    /// Texturas (festón de las notas, puntos y estrellas del componente "Punto", composición post.)
+    /// y tipografías.
     /// Se crean una sola vez y se comparten.
     /// </summary>
     public static class RecursosPost
@@ -35,18 +36,22 @@ namespace CuboPost
         }
 
         // ---------------- imágenes exportadas del Figma (4×) ----------------
-        static Texture2D logo, estrellaContorno, estrellaRellena;
+        static Texture2D logo, estrella12Verde, estrella12Crema, estrella7Verde;
 
         /// <summary>Logo post. (crema con borde verde), exportado del Figma en 4×.</summary>
         public static Texture2D Logo => logo ??= Resources.Load<Texture2D>("Composicion/logo-post-4x");
 
-        /// <summary>Estrella de 7 puntas con contorno verde (Star 6 del Figma).</summary>
-        public static Texture2D EstrellaContorno => estrellaContorno ??=
-            Resources.Load<Texture2D>("Composicion/estrella-contorno") ?? CrearEstrella(256, 7, 6f, false);
+        /// <summary>Componente Punto: Marca=POST, Forma=Estrella 12, Color=Negro, Borde=Verde.</summary>
+        public static Texture2D Estrella12Verde => estrella12Verde ??=
+            Resources.Load<Texture2D>("Composicion/estrella-rellena") ?? CrearEstrella(256, 12, 8f, PaletaPost.Verde);
 
-        /// <summary>Estrella de 12 puntas rellena de oscuro con borde verde (Star 7 del Figma).</summary>
-        public static Texture2D EstrellaRellena => estrellaRellena ??=
-            Resources.Load<Texture2D>("Composicion/estrella-rellena") ?? CrearEstrella(256, 12, 8f, true);
+        /// <summary>Componente Punto: Marca=POST, Forma=Estrella 12, Color=Negro, Borde=Blanco Crema.</summary>
+        public static Texture2D Estrella12Crema => estrella12Crema ??=
+            Resources.Load<Texture2D>("Composicion/estrella-12-crema") ?? CrearEstrella(256, 12, 8f, PaletaPost.Crema);
+
+        /// <summary>Componente Punto: Marca=POST, Forma=Estrella 7, Color=Negro, Borde=Verde.</summary>
+        public static Texture2D Estrella7Verde => estrella7Verde ??=
+            Resources.Load<Texture2D>("Composicion/estrella-7-rellena") ?? CrearEstrella(256, 7, 6f, PaletaPost.Verde);
 
         // ---------------- texturas generadas ----------------
         static Texture2D feston;
@@ -58,21 +63,13 @@ namespace CuboPost
         /// </summary>
         public static Texture2D Feston => feston ??= CrearFeston();
 
-        /// <summary>Anillo crema (Spot sin relleno del Figma). grosor = trazo / diámetro exterior.</summary>
-        public static Texture2D AnilloCrema(float grosor = 0.1f) =>
-            Cacheada($"anillo{grosor:0.000}", () => CrearCirculo(256, grosor, PaletaPost.Crema, PaletaPost.Crema, false));
-
-        /// <summary>Punto verde con borde crema (Spot relleno del Figma).</summary>
-        public static Texture2D PuntoVerde(float grosor = 0.08f) =>
-            Cacheada($"punto{grosor:0.000}", () => CrearCirculo(256, grosor, PaletaPost.Verde, PaletaPost.Crema, true));
-
         /// <summary>
-        /// Puntito estilo SPOT! con la paleta "sprout": relleno en degradé vertical (arriba → abajo)
-        /// y borde. grosor = 0 → sin borde.
+        /// Círculo del componente "Punto" del Figma (Marca=POST): relleno y borde con los colores de
+        /// la marca. grosor = trazo / diámetro exterior; 0 = "Sin borde".
         /// </summary>
-        public static Texture2D Puntito(Color arriba, Color abajo, Color borde, float grosor) =>
-            Cacheada($"pt{ColorUtility.ToHtmlStringRGB(arriba)}{ColorUtility.ToHtmlStringRGB(abajo)}{ColorUtility.ToHtmlStringRGB(borde)}{grosor:0.000}",
-                () => CrearPuntito(128, arriba, abajo, borde, grosor));
+        public static Texture2D Punto(Color relleno, Color borde, float grosor) =>
+            Cacheada($"punto{ColorUtility.ToHtmlStringRGB(relleno)}{ColorUtility.ToHtmlStringRGB(borde)}{Mathf.RoundToInt(grosor * 1000f)}",
+                () => CrearCirculo(256, grosor, relleno, grosor > 0f ? borde : relleno));
 
         static Texture2D Cacheada(string clave, System.Func<Texture2D> crear)
         {
@@ -115,41 +112,20 @@ namespace CuboPost
             return t;
         }
 
-        /// <summary>Círculo cuyo borde exterior toca el borde de la textura (trazo hacia adentro).</summary>
-        static Texture2D CrearCirculo(int n, float grosor, Color colorRelleno, Color colorTrazo, bool relleno)
+        /// <summary>Círculo relleno cuyo borde exterior toca el borde de la textura (trazo hacia adentro).</summary>
+        static Texture2D CrearCirculo(int n, float grosor, Color colorRelleno, Color colorTrazo)
         {
             var t = Nueva(n, n);
             var px = new Color[n * n];
-            float c = n / 2f, exterior = n / 2f - 1f, trazo = Mathf.Max(1.5f, grosor * n);
+            float c = n / 2f, exterior = n / 2f - 1f;
+            float trazo = grosor > 0f ? Mathf.Max(1.5f, grosor * n) : 0f;
             for (int y = 0; y < n; y++)
             for (int x = 0; x < n; x++)
             {
                 float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(c, c));
                 float dentro = Mathf.Clamp01(exterior - d + 0.5f);             // cobertura del disco completo
-                float enTrazo = Mathf.Clamp01(d - (exterior - trazo) + 0.5f);   // 1 en el anillo del borde
+                float enTrazo = trazo > 0f ? Mathf.Clamp01(d - (exterior - trazo) + 0.5f) : 0f;   // 1 en el anillo del borde
                 var col = Color.Lerp(colorRelleno, colorTrazo, enTrazo);
-                col.a = dentro * (relleno ? 1f : enTrazo);
-                px[y * n + x] = col;
-            }
-            t.SetPixels(px);
-            t.Apply(true);
-            return t;
-        }
-
-        static Texture2D CrearPuntito(int n, Color arriba, Color abajo, Color borde, float grosor)
-        {
-            var t = Nueva(n, n);
-            var px = new Color[n * n];
-            float c = n / 2f, exterior = n / 2f - 1f, trazo = grosor * n;
-            for (int y = 0; y < n; y++)
-            for (int x = 0; x < n; x++)
-            {
-                float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(c, c));
-                float dentro = Mathf.Clamp01(exterior - d + 0.5f);
-                float enTrazo = trazo > 0f ? Mathf.Clamp01(d - (exterior - trazo) + 0.5f) : 0f;
-                // Degradé suave de arriba (y alto) hacia abajo, con un poco de curva.
-                float k = Mathf.SmoothStep(0f, 1f, 1f - (y + 0.5f) / n);
-                var col = Color.Lerp(Color.Lerp(arriba, abajo, k), borde, enTrazo);
                 col.a = dentro;
                 px[y * n + x] = col;
             }
@@ -158,8 +134,8 @@ namespace CuboPost
             return t;
         }
 
-        /// <summary>Estrella "flor" de respaldo (si faltan los PNG del Figma).</summary>
-        static Texture2D CrearEstrella(int n, int puntas, float trazo, bool relleno)
+        /// <summary>Estrella "flor" de respaldo (si faltan los PNG del Figma): negra con borde de color.</summary>
+        static Texture2D CrearEstrella(int n, int puntas, float trazo, Color colorBorde)
         {
             var t = Nueva(n, n);
             var px = new Color[n * n];
@@ -170,8 +146,8 @@ namespace CuboPost
                 float dx = x + 0.5f - c, dy = y + 0.5f - c;
                 float d = Mathf.Sqrt(dx * dx + dy * dy) - (radio + amp * Mathf.Cos(puntas * Mathf.Atan2(dy, dx)));
                 float enTrazo = Mathf.Clamp01(trazo / 2f + 0.5f - Mathf.Abs(d));
-                float adentro = relleno ? Mathf.Clamp01(0.5f - d) : 0f;
-                var col = Color.Lerp(PaletaPost.Oscuro, PaletaPost.Verde, enTrazo);
+                float adentro = Mathf.Clamp01(0.5f - d);
+                var col = Color.Lerp(PaletaPost.Oscuro, colorBorde, enTrazo);
                 col.a = Mathf.Max(enTrazo, adentro);
                 px[y * n + x] = col;
             }

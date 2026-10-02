@@ -1,12 +1,12 @@
 // Fondo de las pantallas LED del cubo post.
-// Negro con degradés leves que se mueven lento (como una luz desenfocada con grano),
+// Negro de la marca (#252525) con degradés leves que se mueven lento (como una luz desenfocada con grano),
 // en el verde y el lila de las notas. Usa el UV.x como posición en el perímetro del cubo
 // (0..1), así las luces pasan de una pared a la otra sin cortes en las esquinas.
 Shader "CuboPost/GradienteParedes"
 {
     Properties
     {
-        _Base ("Fondo", Color) = (0.022, 0.022, 0.026, 1)
+        _Base ("Fondo", Color) = (0.145, 0.145, 0.145, 1)
         _C1 ("Verde", Color) = (0.286, 0.722, 0.404, 1)
         _C2 ("Lila", Color) = (0.671, 0.541, 0.902, 1)
         _Perimetro ("Perímetro del cubo (m)", Float) = 46

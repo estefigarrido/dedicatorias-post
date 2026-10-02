@@ -11,7 +11,8 @@ namespace CuboPost.EditorTools
     /// <summary>
     /// Arma la instalación a escala real (metros) según la planta y las vistas del Figma:
     ///   planta 20 × 10 m · altura total 4 m (3,50 m de pared + 0,50 m de coronamiento)
-    ///   · 4 pantallas LED exteriores (una por pared)
+    ///   · 4 pantallas LED exteriores (una por pared), fondo #252525 con los puntos POST dispersos
+    ///   · gráfica post. centrada en las dos paredes largas (frente y fondo)
     ///   · entrada de 3 × 2,8 m centrada en el lateral izquierdo (oeste)
     ///   · Plaza de la República con el Obelisco de fondo.
     ///
@@ -47,9 +48,10 @@ namespace CuboPost.EditorTools
         /// Resumen de las medidas. Queda guardado en la escena (un objeto vacío dentro del cubo) y
         /// sirve para saber si el cubo de la escena está al día con este archivo.
         /// Si se cambia la disposición sin tocar ninguna constante, subir el número del final.
+        /// r2: gráfica post. también en el frente y fondo de pantallas #252525.
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} entrada {4}x{5}x{6} oeste r1",
+            "Medidas {0}x{1}x{2} pantalla {3} entrada {4}x{5}x{6} oeste r2",
             Ancho, Profundidad, AltoTotal, AltoPantalla, EntradaAncho, EntradaAlto, EntradaProfundidad);
 
         // true = usar los materiales que ya existen (para no romper lo que sigue en la escena).
@@ -263,14 +265,19 @@ namespace CuboPost.EditorTools
             // La entrada tapa la parte central de la pantalla izquierda: ahí no van notas.
             paredes[3].zonasBloqueadas.Add(new Rect(Profundidad / 2f - EntradaAncho / 2f - 0.15f, 0f, EntradaAncho + 0.3f, EntradaAlto - Zocalo + 0.1f));
 
-            // Pared de atrás: composición post. grande en el centro y una elipse (todo el alto) donde
-            // no pueden ir notas; las notas van a los costados. La composición ocupa ~73 % del alto
-            // de la pantalla (la misma proporción que tenía) y la elipse es 1,52 veces su ancho.
-            var fondo = paredes[2];
-            fondo.composicionCentral = true;
-            fondo.anchoComposicion = AltoPantalla * 0.73f / 0.534f;   // la composición mide 0,534 de alto por cada 1 de ancho
-            float anchoElipse = fondo.anchoComposicion * 1.52f;
-            fondo.zonasElipse.Add(new Rect((Ancho - anchoElipse) / 2f, 0f, anchoElipse, AltoPantalla));
+            // Paredes largas (frente y fondo): gráfica post. centrada, como en el frame del Figma
+            // (1622:4941). El alto del frame es el alto de la pantalla, y la elipse roja del frame
+            // (todo el alto, 1286 px de ancho por cada 637 de alto) es donde no pueden ir notas ni
+            // puntos sueltos, así nada tapa el logo; las notas van a los costados.
+            float anchoElipse = AltoPantalla * ParedPantalla.FigmaAnchoElipse / ParedPantalla.FigmaAltoFrame;
+            foreach (var larga in new[] { paredes[0], paredes[2] })
+            {
+                larga.composicionCentral = true;
+                larga.zonasElipse.Add(new Rect((Ancho - anchoElipse) / 2f, 0f, anchoElipse, AltoPantalla));
+            }
+
+            // Vista previa sin Play, ya con las medidas y las zonas definitivas.
+            foreach (var p in paredes) p.VistaPrevia();
 
             // Entrada con doble puerta: 3 m de ancho × 2,8 m de alto, centrada en el lateral
             // izquierdo (oeste) y sobresaliendo 1,2 m hacia afuera.
@@ -371,12 +378,13 @@ namespace CuboPost.EditorTools
 
         static Material MatGradiente()
         {
-            if (reusarMateriales)
-            {
-                var existente = AssetDatabase.LoadAssetAtPath<Material>($"{Carpeta}/Pantallas LED.mat");
-                if (existente != null) return existente;
-            }
-            return Guardar(new Material(Shader.Find("CuboPost/GradienteParedes")) { name = "Pantallas LED" }, "Pantallas LED.mat");
+            Material m = null;
+            if (reusarMateriales) m = AssetDatabase.LoadAssetAtPath<Material>($"{Carpeta}/Pantallas LED.mat");
+            if (m == null) m = Guardar(new Material(Shader.Find("CuboPost/GradienteParedes")) { name = "Pantallas LED" }, "Pantallas LED.mat");
+            // El negro de las pantallas es el de la marca (#252525), igual que en el Figma.
+            m.SetColor("_Base", PaletaPost.Oscuro);
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         static Material Lit(string nombre, string hex, float suavidad)

@@ -58,10 +58,14 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   el Obelisco de fondo y gente de 1,70 m como escala. Las medidas están al principio de
   `Assets/CuboPost/Editor/ConstruirCubo.cs`: al cambiarlas, Unity actualiza el cubo de la escena solo
   (o con el menú **post. → Actualizar solo el cubo**), sin tocar la plaza.
-- **Pantallas**: fondo negro con luces leves verde y lila que recorren las 4 paredes sin cortes, puntitos
-  (paleta sprout: lima, aqua, violeta) y los anillos, puntos y estrellas de post.
-- **Pared de atrás**: composición post. del Figma, centrada, con cada elemento flotando lento y a destiempo.
-  Las notas van a los costados: la elipse central (43 % del ancho) está bloqueada.
+- **Pantallas**: fondo negro de la marca (#252525) con luces leves verde y lila que recorren las 4 paredes sin
+  cortes, y los puntos del componente "Punto" del Figma (marca POST) dispersos: círculos S, M y L en sus 5
+  variantes y las estrellas de 12 y 7 puntas, al tamaño del Figma. Cantidad: `puntosPorMetro` en cada pantalla.
+- **Paredes largas (frente y fondo)**: gráfica post. del Figma (logo con sus puntos y estrellas), centrada, con
+  cada elemento flotando lento y a destiempo. Las notas y los puntos sueltos van a los costados: la elipse
+  central (la zona roja del Figma, 6,66 m de ancho por todo el alto) está bloqueada para que nada tape el logo.
+- **Sin apretar ▶** las pantallas muestran una vista previa quieta (gráfica y puntos, sin notas). Esa vista no
+  se guarda en la escena: se rearma sola al abrirla.
 - **Dedicatorias**: se leen de Supabase cada 2 s. Cada una aparece en 1 s, queda 15 s y se va en 1 s.
   Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas (o las de ejemplo si no hay
   ninguna). Las moderadas (`visible = false`) desaparecen solas.

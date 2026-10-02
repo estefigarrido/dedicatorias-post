@@ -7,13 +7,23 @@ using UnityEngine.UI;
 namespace CuboPost
 {
     /// <summary>
-    /// Una de las 4 pantallas LED de la fachada. Dibuja los puntitos y objetos flotantes, la
-    /// composición de post. (en la pared de atrás) y las dedicatorias, sin que se pisen entre sí
-    /// ni con las zonas bloqueadas (la entrada, la elipse central de la composición).
+    /// Una de las 4 pantallas LED de la fachada. Dibuja los puntos y estrellas del componente "Punto"
+    /// (marca POST) dispersos por la pantalla, la gráfica de post. (en las dos paredes largas) y las
+    /// dedicatorias, sin que se pisen entre sí ni con las zonas bloqueadas (la entrada y la elipse
+    /// central de la gráfica, que es la zona roja del Figma).
     /// El GameObject mira hacia adentro del cubo: su +Z es la dirección en la que mira el público.
+    /// También se dibuja sin apretar Play (vista previa quieta, sin notas): esa vista no se guarda
+    /// en la escena, se rearma sola cada vez que se abre.
     /// </summary>
+    [ExecuteAlways]
     public class ParedPantalla : MonoBehaviour
     {
+        // Frame de la gráfica en el Figma (página "Pantallas POST", nodo 1622:4941), en px.
+        // El alto del frame equivale al alto de la pantalla; la elipse es la zona sin notas.
+        public const float FigmaAnchoFrame = 3007f;
+        public const float FigmaAltoFrame = 637f;
+        public const float FigmaAnchoElipse = 1286f;
+
         [Header("Medidas de la pantalla (metros)")]
         public float largo = 20f;
         public float alto = 3.3f;
@@ -37,16 +47,16 @@ namespace CuboPost
         [Tooltip("Elipses tapadas: el rectángulo que las contiene (desde abajo a la izquierda, en metros).")]
         public List<Rect> zonasElipse = new List<Rect>();
 
-        [Header("Decoración")]
-        [Tooltip("Puntitos estilo SPOT! con la paleta sprout, por metro de pantalla.")]
-        public float puntitosPorMetro = 2.2f;
-        [Tooltip("Anillos, puntos y estrellas de post., por metro de pantalla.")]
-        public float decoPostPorMetro = 1.3f;
+        [Header("Puntos POST dispersos (componente \"Punto\" del Figma)")]
+        [Tooltip("Puntos y estrellas detrás de las notas, por metro de pantalla.")]
+        public float puntosPorMetro = 2.6f;
+        [Tooltip("Puntos chicos que flotan por delante de las notas, por metro de pantalla.")]
+        public float puntosAdelantePorMetro = 0.3f;
+        [Tooltip("De cada 100 puntos de atrás, cuántos son estrellas.")]
+        [Range(0f, 100f)] public float porcentajeEstrellas = 12f;
 
-        [Header("Composición post. (pared de atrás)")]
+        [Header("Gráfica post. (logo con sus puntos, centrada)")]
         public bool composicionCentral;
-        [Tooltip("Ancho que ocupa la composición, de la estrella izquierda al último punto (metros).")]
-        public float anchoComposicion = 3.8f;
 
         /// <summary>Se dispara cuando una nota sale de esta pantalla (terminó su tiempo, moderada o falta de lugar).</summary>
         public event Action<Nota> NotaRetirada;
@@ -74,13 +84,18 @@ namespace CuboPost
         }
 
         const float Separacion = 70f;
+        const string NombreLienzo = "Pantalla (canvas)";
         RectTransform lienzo, capaDecoAtras, capaNotas, capaDecoAdelante;
         readonly List<NotaVisual> notas = new List<NotaVisual>();
         readonly Dictionary<NotaVisual, Vector2> destinos = new Dictionary<NotaVisual, Vector2>();
         readonly Dictionary<NotaVisual, Coroutine> ciclos = new Dictionary<NotaVisual, Coroutine>();
+        // Puntos ya ubicados (centro y radio, en unidades), para que no se encimen.
+        readonly List<Vector3> puntosPuestos = new List<Vector3>();
         bool inicializada;
 
         float U(float metros) => metros / metrosPorUnidad;
+        /// <summary>Unidades de pantalla por px del Figma: el alto del frame es el alto de la pantalla.</summary>
+        float PxFigma => U(alto) / FigmaAltoFrame;
         float EscalaNota => Mathf.Max(1f, anchoMinimoNota / (PaletaPost.AnchoNota("S") * metrosPorUnidad));
         /// <summary>Tamaño de la nota en pantalla (unidades), ya escalada al mínimo de 70 cm.</summary>
         Vector2 Medida(NotaVisual nv) => nv.Tamano * EscalaNota;
@@ -104,12 +119,27 @@ namespace CuboPost
             }
         }
 
+        void OnEnable()
+        {
+            // Sin Play: vista previa quieta de la gráfica y los puntos. En Play la arma ControladorCubo.
+            if (!Application.isPlaying) VistaPrevia();
+        }
+
+        /// <summary>Rearma la vista previa del editor (por ejemplo, después de cambiar medidas o zonas).</summary>
+        public void VistaPrevia()
+        {
+            if (Application.isPlaying) return;
+            inicializada = false;
+            Inicializar();
+        }
+
         public void Inicializar()
         {
             if (inicializada) return;
+            BorrarLienzo();   // la vista previa del editor, si había
             inicializada = true;
 
-            var go = new GameObject("Pantalla (canvas)", typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
+            var go = Nuevo(NombreLienzo, typeof(RectTransform), typeof(Canvas), typeof(CanvasScaler));
             go.transform.SetParent(transform, false);
             var canvas = go.GetComponent<Canvas>();
             canvas.renderMode = RenderMode.WorldSpace;
@@ -121,22 +151,52 @@ namespace CuboPost
             lienzo.localScale = Vector3.one * metrosPorUnidad;
             go.GetComponent<CanvasScaler>().dynamicPixelsPerUnit = 4f;
 
-            capaDecoAtras = Capa("Deco atrás");
-            var capaComposicion = Capa("Composición post.");
+            capaDecoAtras = Capa("Puntos atrás");
+            var capaComposicion = Capa("Gráfica post.");
             capaNotas = Capa("Notas");
-            capaDecoAdelante = Capa("Deco adelante");
+            capaDecoAdelante = Capa("Puntos adelante");
 
-            int puntitos = Mathf.RoundToInt(puntitosPorMetro * largo);
-            int decoPost = Mathf.RoundToInt(decoPostPorMetro * largo);
-            CrearPuntitos(capaDecoAtras, puntitos);
-            CrearDecoPost(capaDecoAtras, decoPost);
-            CrearDecoPost(capaDecoAdelante, Mathf.Max(2, decoPost / 4), 0.7f);
+            // Misma disposición cada vez (por pantalla), así la vista previa coincide con el Play.
+            var azar = UnityEngine.Random.state;
+            UnityEngine.Random.InitState(Semilla());
+            puntosPuestos.Clear();
             if (composicionCentral) CrearComposicion(capaComposicion);
+            CrearPuntos(capaDecoAtras, Mathf.RoundToInt(puntosPorMetro * largo), false);
+            CrearPuntos(capaDecoAdelante, Mathf.RoundToInt(puntosAdelantePorMetro * largo), true);
+            UnityEngine.Random.state = azar;
+        }
+
+        /// <summary>Quita el canvas anterior de esta pantalla, si existe.</summary>
+        void BorrarLienzo()
+        {
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var hijo = transform.GetChild(i);
+                if (hijo.name != NombreLienzo) continue;
+                if (Application.isPlaying) Destroy(hijo.gameObject);
+                else DestroyImmediate(hijo.gameObject);
+            }
+            lienzo = null;
+        }
+
+        /// <summary>Objeto nuevo. Fuera de Play es solo vista previa: no se guarda en la escena.</summary>
+        static GameObject Nuevo(string nombre, params Type[] componentes)
+        {
+            var go = new GameObject(nombre, componentes);
+            if (!Application.isPlaying) go.hideFlags = HideFlags.DontSaveInEditor | HideFlags.DontSaveInBuild;
+            return go;
+        }
+
+        int Semilla()
+        {
+            int h = 17;
+            foreach (char c in name) h = unchecked(h * 31 + c);
+            return h;
         }
 
         RectTransform Capa(string nombre)
         {
-            var go = new GameObject(nombre, typeof(RectTransform));
+            var go = Nuevo(nombre, typeof(RectTransform));
             var rt = (RectTransform)go.transform;
             rt.SetParent(lienzo, false);
             rt.anchorMin = Vector2.zero;
@@ -303,55 +363,81 @@ namespace CuboPost
             if (nv != null) Destroy(nv.gameObject);
         }
 
-        // ---------------- decoración ----------------
+        // ---------------- puntos POST dispersos ----------------
 
-        /// <summary>Puntitos de las pantallas SPOT!, con los colores de "sprout".</summary>
-        void CrearPuntitos(RectTransform capa, int cantidad)
+        // Componente "Punto" del Figma (1517:8), marca POST. Diámetros en px: S 21,23 · M 35 · L 61,34.
+        static readonly float[] DiametrosPunto = { 21.23f, 35f, 61.34f };
+        const float TrazoPunto = 2.95f;         // borde de los círculos, en px del Figma
+        const float Estrella12 = 112.65f;       // tamaño XL de la estrella de 12 puntas
+        const float Estrella7 = 94.84f;         // tamaño XL de la estrella de 7 puntas
+        const float SobranteEstrella = 1.043f;  // el PNG exportado incluye el borde, que sobresale
+
+        /// <summary>Las 5 variantes de círculo de la marca POST. indice: 0 a 4.</summary>
+        static Texture2D TexturaPunto(int indice, float diametro)
         {
-            var lima = PaletaPost.SproutLima;
-            var aqua = PaletaPost.SproutAqua;
-            var violeta = PaletaPost.SproutVioleta;
-            var variantes = new[]
+            float grosor = TrazoPunto / diametro;
+            switch (indice)
             {
-                RecursosPost.Puntito(lima, lima, aqua, 0.09f),       // lima con borde aqua
-                RecursosPost.Puntito(lima, aqua, aqua, 0.09f),       // lima → aqua
-                RecursosPost.Puntito(violeta, aqua, aqua, 0.09f),    // violeta → aqua
-                RecursosPost.Puntito(violeta, violeta, aqua, 0.09f), // violeta con borde aqua
-                RecursosPost.Puntito(aqua, aqua, aqua, 0f),          // gotita aqua
-            };
-            for (int i = 0; i < cantidad; i++)
-            {
-                int v = UnityEngine.Random.Range(0, variantes.Length);
-                float tam = v == 4 ? UnityEngine.Random.Range(40f, 80f) : UnityEngine.Random.Range(60f, 150f);
-                Deco(capa, variantes[v], tam, 1f, girar: false);
+                case 0: return RecursosPost.Punto(PaletaPost.Oscuro, PaletaPost.Crema, grosor);   // Negro, borde Blanco Crema
+                case 1: return RecursosPost.Punto(PaletaPost.Oscuro, PaletaPost.Verde, grosor);   // Negro, borde Verde
+                case 2: return RecursosPost.Punto(PaletaPost.Verde, PaletaPost.Crema, grosor);    // Verde, borde Blanco Crema
+                case 3: return RecursosPost.Punto(PaletaPost.Crema, PaletaPost.Crema, 0f);        // Blanco Crema, sin borde
+                default: return RecursosPost.Punto(PaletaPost.Verde, PaletaPost.Verde, 0f);       // Verde, sin borde
             }
         }
 
-        /// <summary>Anillos crema, puntos verdes y estrellas de la pieza post.</summary>
-        void CrearDecoPost(RectTransform capa, int cantidad, float escala = 1f)
+        /// <summary>
+        /// Dispersa círculos (S, M, L en sus 5 variantes) y estrellas (12 y 7 puntas) por la pantalla,
+        /// al tamaño que tienen en el Figma. No entran en las zonas bloqueadas ni se enciman.
+        /// soloChicos: solo círculos S y M (los que flotan por delante de las notas).
+        /// </summary>
+        void CrearPuntos(RectTransform capa, int cantidad, bool soloChicos)
         {
+            float k = PxFigma;
             for (int i = 0; i < cantidad; i++)
             {
-                float dado = UnityEngine.Random.value;
-                if (dado < 0.42f) Deco(capa, RecursosPost.AnilloCrema(0.1f), UnityEngine.Random.Range(60f, 180f) * escala, 1f, false);
-                else if (dado < 0.76f) Deco(capa, RecursosPost.PuntoVerde(0.08f), UnityEngine.Random.Range(60f, 170f) * escala, 1f, false);
-                else if (dado < 0.9f) Deco(capa, RecursosPost.EstrellaContorno, UnityEngine.Random.Range(260f, 420f) * escala, 1f, true);
-                else Deco(capa, RecursosPost.EstrellaRellena, UnityEngine.Random.Range(280f, 440f) * escala, 1f, true);
+                if (!soloChicos && UnityEngine.Random.value * 100f < porcentajeEstrellas)
+                {
+                    int e = UnityEngine.Random.Range(0, 3);
+                    var tex = e == 0 ? RecursosPost.Estrella12Crema : e == 1 ? RecursosPost.Estrella12Verde : RecursosPost.Estrella7Verde;
+                    float nominal = e == 2 ? Estrella7 : Estrella12;
+                    Punto(capa, tex, nominal * SobranteEstrella * k, true);
+                }
+                else
+                {
+                    // Más chicos que grandes: S 45 %, M 35 %, L 20 %.
+                    float dado = UnityEngine.Random.value;
+                    int tamano = soloChicos ? (dado < 0.6f ? 0 : 1) : (dado < 0.45f ? 0 : dado < 0.8f ? 1 : 2);
+                    float diametro = DiametrosPunto[tamano];
+                    Punto(capa, TexturaPunto(UnityEngine.Random.Range(0, 5), diametro), diametro * k, false);
+                }
             }
         }
 
-        void Deco(RectTransform capa, Texture tex, float tam, float amplitud, bool girar)
+        void Punto(RectTransform capa, Texture tex, float tam, bool girar)
         {
+            if (tex == null) return;
             var t = TamanoLienzo;
-            Vector2 pos = Vector2.zero;
-            for (int intento = 0; intento < 40; intento++)
-            {
-                pos = new Vector2(UnityEngine.Random.Range(tam, t.x - tam), UnityEngine.Random.Range(tam * 0.6f, t.y - tam * 0.6f));
-                // Margen extra para que la flotación no los meta en la zona bloqueada.
-                if (!TocaZona(new Rect(pos.x - tam / 2 - 90f, pos.y - tam / 2 - 90f, tam + 180f, tam + 180f))) break;
-            }
+            // Cuánto se mueve al flotar: se reserva ese lugar para que no salga de la pantalla
+            // ni se meta en una zona bloqueada.
+            var flota = new Vector2(UnityEngine.Random.Range(20f, 60f), UnityEngine.Random.Range(50f, 110f));
+            float mx = tam / 2f + flota.x, my = tam / 2f + flota.y;
+            if (2f * mx >= t.x || 2f * my >= t.y) return;
 
-            var go = new GameObject("Deco", typeof(RectTransform), typeof(RawImage), typeof(DecoFlotante));
+            bool hayLugar = false;
+            Vector2 pos = Vector2.zero;
+            for (int intento = 0; intento < 60 && !hayLugar; intento++)
+            {
+                pos = new Vector2(UnityEngine.Random.Range(mx, t.x - mx), UnityEngine.Random.Range(my, t.y - my));
+                if (TocaZona(new Rect(pos.x - mx - 40f, pos.y - my - 40f, 2f * mx + 80f, 2f * my + 80f))) continue;
+                hayLugar = true;
+                foreach (var p in puntosPuestos)
+                    if (Vector2.Distance(pos, new Vector2(p.x, p.y)) < tam / 2f + p.z + 140f) { hayLugar = false; break; }
+            }
+            if (!hayLugar) return;   // pantalla llena: mejor uno menos que uno encimado
+            puntosPuestos.Add(new Vector3(pos.x, pos.y, tam / 2f));
+
+            var go = Nuevo("Punto", typeof(RectTransform), typeof(RawImage), typeof(DecoFlotante));
             var rt = (RectTransform)go.transform;
             rt.SetParent(capa, false);
             rt.anchorMin = rt.anchorMax = Vector2.zero;
@@ -364,60 +450,58 @@ namespace CuboPost
             var f = go.GetComponent<DecoFlotante>();
             f.periodo = UnityEngine.Random.Range(6f, 11f);
             f.fase = UnityEngine.Random.value;
-            f.amplitud = new Vector2(UnityEngine.Random.Range(20f, 60f), UnityEngine.Random.Range(50f, 110f)) * amplitud;
+            f.amplitud = flota;
             f.giro = girar ? 12f : 0f;
         }
 
-        // ---------------- composición post. ----------------
+        // ---------------- gráfica post. ----------------
 
         /// <summary>
-        /// Composición fija del frame "post." del Figma (1132 × 637), centrada y grande.
+        /// Gráfica del frame del Figma (1622:4941, 3007 × 637 px): logo post. con sus puntos y sus
+        /// dos estrellas, centrada. El alto del frame ocupa todo el alto de la pantalla. La elipse
+        /// roja del frame no se dibuja: es la zona donde no entran notas ni puntos sueltos.
         /// Cada elemento hace un idle lento, a destiempo de los demás.
         /// Coordenadas del Figma: esquina superior izquierda del frame, en px.
         /// </summary>
         void CrearComposicion(RectTransform capa)
         {
-            const float anchoFrame = 1132.4f, altoFrame = 637f;
-            // Extensión visual de los elementos (de la estrella izquierda al último punto).
-            const float xMin = 125.5f, xMax = 976f, yMin = 75.5f, yMax = 530f;
-            float k = U(anchoComposicion) / (xMax - xMin);   // unidades de pantalla por px del Figma
+            float k = PxFigma;   // unidades de pantalla por px del Figma
 
-            var go = new GameObject("Composición", typeof(RectTransform));
+            var go = Nuevo("Gráfica", typeof(RectTransform));
             var rt = (RectTransform)go.transform;
             rt.SetParent(capa, false);
-            rt.anchorMin = rt.anchorMax = new Vector2(0.5f, 0.5f);
-            rt.sizeDelta = new Vector2(anchoFrame * k, altoFrame * k);
-            rt.pivot = new Vector2(((xMin + xMax) / 2f) / anchoFrame, 1f - ((yMin + yMax) / 2f) / altoFrame);
+            rt.anchorMin = rt.anchorMax = rt.pivot = new Vector2(0.5f, 0.5f);
+            rt.sizeDelta = new Vector2(FigmaAnchoFrame * k, FigmaAltoFrame * k);
             rt.anchoredPosition = Vector2.zero;
 
-            const float trazo = 2.95f;   // borde crema de los Spot (OUTSIDE)
-            // (x, y, diámetro, relleno) del Figma
-            var spots = new (float x, float y, float d, bool relleno)[]
+            // (x, y, diámetro sin borde, relleno verde) de cada Spot del Figma. Los que no son
+            // verdes son "Negro con borde Blanco Crema"; todos llevan el borde por fuera.
+            var spots = new (float x, float y, float d, bool verde)[]
             {
-                (902.4f, 119.7f, 31.9f, false), (225.3f, 112.1f, 15.3f, false), (957.9f, 394.6f, 15.3f, false),
-                (686.5f, 436.5f, 15.3f, false), (432.9f, 460.6f, 15.3f, true),  (727.8f, 78.4f, 15.3f, true),
-                (240.6f, 356.8f, 15.3f, false), (344.5f, 499.6f, 27.7f, false), (767.3f, 112.1f, 27.7f, false),
-                (918.3f, 424.7f, 47.2f, true),  (200.5f, 436.5f, 55.4f, true),
+                (1855.43f, 135.29f, 31.85f, false), (1178.32f, 127.62f, 15.34f, false), (1910.87f, 410.14f, 15.34f, false),
+                (1639.55f, 452.02f, 15.34f, false), (1385.93f, 476.20f, 15.34f, true),  (1680.84f, 94.00f, 15.34f, true),
+                (1193.65f, 372.39f, 15.34f, false), (1297.46f, 515.13f, 27.72f, false), (1720.36f, 127.62f, 27.72f, false),
+                (1871.35f, 440.22f, 47.19f, true),  (1153.55f, 452.02f, 55.44f, true),
             };
             int i = 0;
             foreach (var s in spots)
             {
-                float exterior = s.d + 2f * trazo;
-                var tex = s.relleno ? RecursosPost.PuntoVerde(trazo / exterior) : RecursosPost.AnilloCrema(trazo / exterior);
+                float exterior = s.d + 2f * TrazoPunto;
+                var tex = RecursosPost.Punto(s.verde ? PaletaPost.Verde : PaletaPost.Oscuro, PaletaPost.Crema, TrazoPunto / exterior);
                 Elemento(rt, "Spot", tex, s.x + s.d / 2f, s.y + s.d / 2f, exterior, exterior, k, 0f, i++);
             }
             // Estrellas (centro y tamaño de la imagen exportada, en px del Figma).
-            Elemento(rt, "Estrella 7", RecursosPost.EstrellaRellena, 184.3f, 230.3f, 117.5f, 117.5f, k, 8f, i++);
-            Elemento(rt, "Estrella 6", RecursosPost.EstrellaContorno, 883.1f, 273.2f, 99f, 99.8f, k, 10f, i++);
-            // Logo: rectángulo de la imagen exportada (x, y, ancho, alto).
-            Elemento(rt, "Logo post.", RecursosPost.Logo, 325.7f + 477.7f / 2f, 201.6f + 228.5f / 2f, 477.7f, 228.5f, k, 1.2f, i, 0.45f);
+            Elemento(rt, "Estrella 12", RecursosPost.Estrella12Verde, 1137.3f, 245.9f, 117.5f, 117.5f, k, 8f, i++);
+            Elemento(rt, "Estrella 7", RecursosPost.Estrella7Verde, 1836.1f, 288.8f, 99f, 99.8f, k, 10f, i++);
+            // Logo: centro y tamaño de la imagen exportada (incluye el borde verde).
+            Elemento(rt, "Logo post.", RecursosPost.Logo, 1517.6f, 331.4f, 477.7f, 228.5f, k, 1.2f, i, 0.45f);
         }
 
         void Elemento(RectTransform padre, string nombre, Texture tex, float cx, float cy, float w, float h,
             float k, float giro, int indice, float amplitud = 1f)
         {
             if (tex == null) return;
-            var go = new GameObject(nombre, typeof(RectTransform), typeof(RawImage), typeof(DecoFlotante));
+            var go = Nuevo(nombre, typeof(RectTransform), typeof(RawImage), typeof(DecoFlotante));
             var rt = (RectTransform)go.transform;
             rt.SetParent(padre, false);
             rt.anchorMin = rt.anchorMax = new Vector2(0f, 1f);
