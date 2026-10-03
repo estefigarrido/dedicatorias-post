@@ -66,7 +66,8 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   central (la zona roja del Figma, 6,66 m de ancho por todo el alto) está bloqueada para que nada tape el logo.
 - **Sin apretar ▶** las pantallas muestran una vista previa quieta (gráfica y puntos, sin notas). Esa vista no
   se guarda en la escena: se rearma sola al abrirla.
-- **Dedicatorias**: se leen de Supabase cada 2 s. Cada una aparece en 1 s, queda 15 s y se va en 1 s.
+- **Dedicatorias**: por ahora salen solo en la pantalla del frente (`recibeNotas` en cada pantalla; se define
+  en `ConstruirCubo.cs`). Se leen de Supabase cada 2 s. Cada una aparece en 1 s, queda 15 s y se va en 1 s.
   Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas (o las de ejemplo si no hay
   ninguna). Las moderadas (`visible = false`) desaparecen solas.
 - **Cámara**: arrastrar para girar · rueda para acercar · 1-4 cada pared a la altura de la fila · 0 vista general · R giro automático.

@@ -5,7 +5,8 @@ using UnityEngine;
 namespace CuboPost
 {
     /// <summary>
-    /// Reparte las dedicatorias entre las 4 pantallas (siempre en la menos ocupada).
+    /// Reparte las dedicatorias entre las pantallas que reciben notas (<see cref="ParedPantalla.recibeNotas"/>),
+    /// siempre en la menos ocupada. Por ahora solo las recibe la pantalla del frente.
     /// Cada nota se ve un rato y desaparece (ver <see cref="ParedPantalla"/>):
     ///   · las que llegan desde la web aparecen apenas se publican;
     ///   · mientras tanto rotan las que ya se habían enviado, de a una;
@@ -30,6 +31,7 @@ namespace CuboPost
         readonly List<Nota> ejemplos = new List<Nota>();
         readonly Dictionary<long, ParedPantalla> enPantalla = new Dictionary<long, ParedPantalla>();
         int siguienteHistorial, siguienteEjemplo;
+        bool avisoPrimera;
 
         static readonly (string para, string mensaje, string color)[] Ejemplos =
         {
@@ -74,11 +76,16 @@ namespace CuboPost
             StartCoroutine(Rotar());
         }
 
-        /// <summary>inicial = true: nota vieja (carga al arrancar), entra a la rotación sin mostrarse ya.</summary>
+        /// <summary>
+        /// inicial = true: nota vieja (carga al arrancar), entra a la rotación sin mostrarse ya.
+        /// Las de la carga inicial llegan de la más vieja a la más nueva y se ponen adelante, así la
+        /// rotación arranca por las más recientes.
+        /// </summary>
         void Recibir(Nota n, bool inicial)
         {
             if (historial.Exists(x => x.id == n.id)) return;
-            historial.Add(n);
+            if (inicial) historial.Insert(0, n);
+            else historial.Add(n);
             if (!inicial) Mostrar(n, ElegirPared(n.mensaje));
         }
 
@@ -108,9 +115,14 @@ namespace CuboPost
 
         void Mostrar(Nota n, ParedPantalla p)
         {
-            if (enPantalla.ContainsKey(n.id)) return;
+            if (p == null || enPantalla.ContainsKey(n.id)) return;
             enPantalla[n.id] = p;
             p.Agregar(n);
+            if (!avisoPrimera && !n.demo)
+            {
+                avisoPrimera = true;
+                Debug.Log($"[post.] Primera dedicatoria del sitio en pantalla: nota {n.id} en \"{p.name}\".");
+            }
         }
 
         /// <summary>La siguiente de la lista (en orden, dando la vuelta) que no esté ya en pantalla.</summary>
@@ -133,7 +145,7 @@ namespace CuboPost
             float menor = float.MaxValue;
             foreach (var p in paredes)
             {
-                if (p.Cantidad >= notasPorPantalla) continue;
+                if (!p.recibeNotas || p.Cantidad >= notasPorPantalla) continue;
                 float o = p.Ocupacion + Random.Range(0f, 0.03f);
                 if (o < menor)
                 {
@@ -144,12 +156,14 @@ namespace CuboPost
             return mejor;
         }
 
+        /// <summary>La pantalla menos ocupada entre las que reciben notas (null si ninguna las recibe).</summary>
         ParedPantalla ElegirPared(string evitarMensaje)
         {
-            ParedPantalla mejor = paredes[0];
+            ParedPantalla mejor = null;
             float menor = float.MaxValue;
             foreach (var p in paredes)
             {
+                if (!p.recibeNotas) continue;
                 float o = p.Ocupacion + Random.Range(0f, 0.03f);
                 if (p.Contiene(evitarMensaje)) o += 10f;
                 if (o < menor)

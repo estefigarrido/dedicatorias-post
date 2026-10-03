@@ -48,6 +48,7 @@ namespace CuboPost
             {
                 Array.Reverse(notas);
                 foreach (var n in notas) Entregar(n, true);
+                Debug.Log($"[post.] Supabase conectado: {notas.Length} dedicatorias del sitio entran a la rotación.");
             });
 
             StartCoroutine(BuscarNuevas());

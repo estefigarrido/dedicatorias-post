@@ -49,9 +49,10 @@ namespace CuboPost.EditorTools
         /// sirve para saber si el cubo de la escena está al día con este archivo.
         /// Si se cambia la disposición sin tocar ninguna constante, subir el número del final.
         /// r2: gráfica post. también en el frente y fondo de pantallas #252525.
+        /// r3: las dedicatorias salen solo en la pantalla del frente.
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} entrada {4}x{5}x{6} oeste r2",
+            "Medidas {0}x{1}x{2} pantalla {3} entrada {4}x{5}x{6} oeste r3",
             Ancho, Profundidad, AltoTotal, AltoPantalla, EntradaAncho, EntradaAlto, EntradaProfundidad);
 
         // true = usar los materiales que ya existen (para no romper lo que sigue en la escena).
@@ -275,6 +276,10 @@ namespace CuboPost.EditorTools
                 larga.composicionCentral = true;
                 larga.zonasElipse.Add(new Rect((Ancho - anchoElipse) / 2f, 0f, anchoElipse, AltoPantalla));
             }
+
+            // Por ahora las dedicatorias salen solo en la pantalla del frente (la que ve la cámara al
+            // abrir). Las otras tres muestran gráfica y puntos. Para sumar otra, poner true acá.
+            for (int i = 0; i < paredes.Count; i++) paredes[i].recibeNotas = i == 0;
 
             // Vista previa sin Play, ya con las medidas y las zonas definitivas.
             foreach (var p in paredes) p.VistaPrevia();

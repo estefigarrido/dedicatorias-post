@@ -31,6 +31,8 @@ namespace CuboPost
         public float metrosPorUnidad = 0.001f;
 
         [Header("Notas")]
+        [Tooltip("Si esta pantalla muestra dedicatorias. Apagado: solo gráfica y puntos.")]
+        public bool recibeNotas = true;
         [Tooltip("Ancho mínimo de la nota más chica (S), en metros. Las demás crecen en la misma proporción.")]
         public float anchoMinimoNota = 0.70f;
         [Tooltip("Segundos que cada nota queda visible con opacidad completa.")]
