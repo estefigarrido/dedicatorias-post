@@ -29,7 +29,7 @@ namespace CuboPost.EditorTools
         /// no coincide con la de este archivo, la plaza se rearma sola cuando Unity recompila.
         /// Subir el número cada vez que se cambie algo de la plaza.
         /// </summary>
-        internal const string Version = "Entorno v2 · plaza real";
+        internal const string Version = "Entorno v3 · plaza real con colisiones";
 
         // Niveles (metros). El piso de la explanada es el cero, igual que el del stand.
         const float YAsfalto = -0.12f, YBase = -0.06f, YJardin = -0.035f, YSendero = -0.022f, YVereda = -0.015f, YTerracota = 0f, YBordeCesped = 0.06f;
@@ -62,6 +62,8 @@ namespace CuboPost.EditorTools
         static readonly List<Mesh> icosferas = new List<Mesh>();      // masas de follaje detalladas
         static readonly List<Mesh> matasSimples = new List<Mesh>();   // las mismas con menos caras (plantas chicas y árboles lejanos)
         static Transform raiz;
+        // Troncos de los árboles (pie y radio), para que el visitante no los atraviese.
+        static readonly List<Vector4> troncos = new List<Vector4>();
 
         // Trazados ya suavizados (ver Trazar).
         static List<Vector2> anillo, explanada, cordon, cespedAnilloAdentro, cespedAnilloAfuera, caminoOeste, caminoEste, bordeSur;
@@ -86,6 +88,7 @@ namespace CuboPost.EditorTools
             conRelieve.Clear();
             icosferas.Clear();
             matasSimples.Clear();
+            troncos.Clear();
             cortesForzados = 0;
             Random.InitState(20261005);
             cubo = MallaPrimitiva(PrimitiveType.Cube);
@@ -112,6 +115,7 @@ namespace CuboPost.EditorTools
             MastilYCartel();
             Edificios();
             Transito();
+            Colisiones();
             if (cortesForzados > 0) Debug.LogWarning("[post.] Plaza: hubo " + cortesForzados + " polígonos con cruces al triangular.");
 
             // Recién ahora, con todo armado: se borra lo que quedó de versiones anteriores en la
@@ -127,6 +131,49 @@ namespace CuboPost.EditorTools
                 AssetDatabase.DeleteAsset(ruta);
             }
             new GameObject(Version).transform.SetParent(raiz, false);
+        }
+
+        // Lo que se dibuja pero no frena al visitante: pintura del asfalto, plantas chicas y detalles
+        // al ras del piso. Los árboles tampoco llevan su malla: chocan solo con el tronco.
+        static readonly string[] SinColision = { "Marcas viales", "Separadores de Corrientes", "Matas y plantas", "Árboles", "Bandera", "Rejilla de desagüe", "Bandas de granito" };
+
+        /// <summary>
+        /// Colisiones para recorrer la plaza caminando: el piso con su relieve (cordones, murete,
+        /// césped del anillo), el mobiliario, los edificios, los autos y la gente chocan con su
+        /// propia malla; los árboles, con una cápsula en el tronco. Debajo de todo queda un piso de
+        /// seguridad invisible, por si en algún lugar no hay nada.
+        /// </summary>
+        static void Colisiones()
+        {
+            foreach (var filtro in raiz.GetComponentsInChildren<MeshFilter>(true))
+            {
+                if (filtro.sharedMesh == null) continue;
+                bool choca = true;
+                foreach (var prefijo in SinColision)
+                    if (filtro.name.StartsWith(prefijo, System.StringComparison.Ordinal)) { choca = false; break; }
+                if (choca) filtro.gameObject.AddComponent<MeshCollider>().sharedMesh = filtro.sharedMesh;
+            }
+
+            var colisiones = new GameObject("Colisiones").transform;
+            colisiones.SetParent(raiz, false);
+            var arboles = new GameObject("Troncos de los árboles").transform;
+            arboles.SetParent(colisiones, false);
+            foreach (var t in troncos)
+            {
+                var tronco = new GameObject("Tronco");
+                tronco.transform.SetParent(arboles, false);
+                tronco.transform.localPosition = new Vector3(t.x, t.y, t.z);
+                var capsula = tronco.AddComponent<CapsuleCollider>();
+                capsula.direction = 1;   // eje vertical
+                capsula.radius = t.w + 0.03f;
+                capsula.height = 3f;
+                capsula.center = new Vector3(0f, 1.4f, 0f);
+            }
+            var piso = new GameObject("Piso de seguridad");
+            piso.transform.SetParent(colisiones, false);
+            var caja = piso.AddComponent<BoxCollider>();
+            caja.size = new Vector3(3000f, 2f, 3000f);
+            caja.center = new Vector3(0f, YAsfalto - 0.02f - 1f, 0f);
         }
 
         /// <summary>¿El entorno que está bajo <paramref name="contexto"/> es el de esta versión y quedó completo?</summary>
@@ -852,6 +899,7 @@ namespace CuboPost.EditorTools
             float h = Random.Range(3.2f, 4.4f) * esc;
             var cima = p + new Vector3(Random.Range(-0.4f, 0.4f), h, Random.Range(-0.4f, 0.4f));
             a.Cilindro(p - Vector3.up * 0.1f, cima, 0.2f * esc, tronco, tronco8);
+            troncos.Add(new Vector4(p.x, p.y, p.z, 0.2f * esc));
             for (int i = 0; i < 2; i++)
             {
                 var dir = Quaternion.Euler(0, Random.Range(0f, 360f), 0) * new Vector3(1f, 0.9f, 0);

@@ -25,6 +25,10 @@ namespace CuboPost.EditorTools
     /// Por ahora es solo el exterior: detrás de las puertas de entrada y salida hay un cierre oscuro
     /// al fondo hasta que se arme el interior (sala, mats, cortina y pantallas interiores).
     ///
+    /// La escena se recorre caminando: en Play, el "Visitante (WASD)" es una persona de 1,75 m con
+    /// la cámara a la altura de sus ojos (ver <see cref="Caminante"/>). La fila de la entrada son
+    /// figuras iguales a las de la plaza.
+    ///
     /// Ejes: +X = este, +Z = norte. El stand queda centrado en el origen.
     ///
     /// Menú post. → Construir escena del cubo: rearma TODA la escena desde cero (plaza incluida).
@@ -62,6 +66,18 @@ namespace CuboPost.EditorTools
         // Vista general de la cámara.
         const float DistanciaCamara = 32f;
 
+        // Visitante: la persona con la que se recorre la escena en Play (W A S D). Mide 1,75 m y
+        // tiene los ojos unos 12 cm por debajo de la coronilla, como una persona de esa altura.
+        const float AlturaVisitante = 1.75f, OjosVisitante = 1.63f;
+        const string NombreVisitante = "Visitante (WASD)";
+        // Arranca en la explanada, frente a la esquina sudeste del stand: desde ahí se ven la
+        // pantalla del frente y el lado de la entrada, con la fila.
+        static readonly Vector3 InicioVisitante = new Vector3(15.5f, 0f, -10.5f);
+        const float GiroVisitante = -48f;
+        // Gente de la fila: una sola malla de esta altura, que cada figura escala a la suya.
+        const float AlturaFigura = 1.7f;
+        const int CapaSinRayos = 2;   // capa "Ignore Raycast" de Unity
+
         // Las escenas anteriores tenían un piso rojo (el área relevada de 32 × 15 m). Ya no va: si
         // la escena lo tiene, se saca al actualizar el cubo.
         const string NombrePisoRojo = "Plaza roja";
@@ -81,10 +97,11 @@ namespace CuboPost.EditorTools
         /// r5: fondo de 12,42 m (3,00 + 0,71 + 2,50 por mitad), franja en proporción y sin piso rojo.
         /// r6: 2 m más de altura (pantalla hasta 5,50 m, 6 m en total).
         /// r7: el lado este es una sola pantalla corrida con dos puertas de 0,90 m (entrada y salida).
+        /// r8: visitante de 1,75 m para recorrer la escena con W A S D, fila con figuras y colisiones.
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} r7",
-            Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta);
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} r8",
+            Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante);
 
         // Mallas de las pantallas que ya no existen (el lado este tenía dos tramos): se borran al actualizar.
         static readonly string[] MallasViejas = { "Pantalla derecha (ropero).asset", "Pantalla derecha (técnico).asset" };
@@ -135,6 +152,9 @@ namespace CuboPost.EditorTools
             var orbita = camGo.AddComponent<CamaraOrbita>();
             orbita.distancia = DistanciaCamara;
             AjustarCamara(orbita);
+
+            // ---------- visitante ----------
+            ArmarVisitante(cam, orbita);
 
             EditorSceneManager.SaveScene(escena, RutaEscena);
             EditorBuildSettings.scenes = new[] { new EditorBuildSettingsScene(RutaEscena, true) };
@@ -208,6 +228,11 @@ namespace CuboPost.EditorTools
                 AjustarCamara(orbita);
                 EditorUtility.SetDirty(orbita);
             }
+
+            // El visitante se arma de nuevo, parado en el punto de partida.
+            foreach (var raiz in escena.GetRootGameObjects())
+                if (raiz.name == NombreVisitante) Object.DestroyImmediate(raiz);
+            ArmarVisitante(orbita != null ? orbita.GetComponent<Camera>() : null, orbita);
 
             EditorSceneManager.MarkSceneDirty(escena);
             EditorSceneManager.SaveScene(escena);
@@ -290,7 +315,9 @@ namespace CuboPost.EditorTools
             obelisco.transform.SetParent(contexto, false);
             // En su isla, cruzando Av. Corrientes hacia el sur, sobre el eje de la plaza.
             obelisco.transform.position = ConstruirEntorno.PosicionObelisco;
-            obelisco.GetComponent<MeshFilter>().sharedMesh = MallaObelisco();
+            var mallaObelisco = MallaObelisco();
+            obelisco.GetComponent<MeshFilter>().sharedMesh = mallaObelisco;
+            obelisco.AddComponent<MeshCollider>().sharedMesh = mallaObelisco;
             obelisco.GetComponent<MeshRenderer>().sharedMaterial = matObelisco;
             // Calles, explanada, anillo, jardines, cartel BA, mobiliario, edificios y autos.
             ConstruirEntorno.Construir(contexto);
@@ -400,6 +427,14 @@ namespace CuboPost.EditorTools
             foreach (var sz in new[] { -1f, 1f })
                 Caja("Esquinero", estructura, new Vector3(sx * Ancho / 2f, AltoPared / 2f, sz * Profundidad / 2f), new Vector3(0.12f, AltoPared, 0.12f), matEstructura);
 
+            // El interior todavía no está armado: la sala es un bloque macizo para el visitante (las
+            // pantallas no chocan por sí solas). A los pasillos de la franja sí se entra por las puertas.
+            var sala = new GameObject("Sala (colisión · interior pendiente)");
+            sala.transform.SetParent(estructura, false);
+            var bloque = sala.AddComponent<BoxCollider>();
+            bloque.center = new Vector3((oeste + xFranja) / 2f, AltoPared / 2f, 0f);
+            bloque.size = new Vector3(xFranja - oeste, AltoPared, Profundidad);
+
             // Pantallas: recorren el perímetro en orden (frente → derecha → fondo → izquierda) para que
             // el degradé pase de una a otra sin cortes. La del lado este es una sola, de punta a punta,
             // con el hueco de las dos puertas (medido desde su extremo sur y desde el borde de abajo).
@@ -452,19 +487,30 @@ namespace CuboPost.EditorTools
             // La salida da contra la pared sur del stand: su cara de adentro (afuera es pantalla).
             CajaEntre("Salida · pared sur", franja, xFranja, este - h, 0f, AltoAcceso, sur + h, sur + 0.1f, matTunel);
 
-            // Gente haciendo la fila (referencia de escala: 1,70 m). Sale derecho desde la entrada
-            // hacia el este, donde está la zona de espera.
-            var fila = new GameObject("Fila (referencia 1,70 m)").transform;
+            // Gente haciendo la fila: figuras como las de la plaza, de distintas alturas, mirando hacia
+            // la puerta de entrada. La fila sale derecho hacia el este y deja libre el paso a la puerta.
+            var fila = new GameObject("Fila").transform;
             fila.SetParent(cubo, false);
-            float zFila = zPuertaEntrada;   // centro de la puerta de entrada
-            for (int i = 0; i < 7; i++)
+            var mallaFigura = Guardar(ConstruirEntorno.MallaDeFigura(AlturaFigura), "Figura de pie.asset");
+            var tonos = new[] { Mat("Figura clara", "#d6d0c2", 0.15f), Mat("Figura media", "#bab3a6", 0.15f), Mat("Figura oscura", "#9d978d", 0.15f) };
+            float[] alturas = { 1.68f, 1.76f, 1.6f, 1.82f, 1.71f, 1.57f, 1.78f };
+            float[] giros = { -6f, 9f, -3f, 14f, 0f, -12f, 5f };
+            int[] tono = { 0, 2, 1, 0, 1, 2, 0 };
+            for (int i = 0; i < alturas.Length; i++)
             {
-                var p = GameObject.CreatePrimitive(PrimitiveType.Capsule);
-                p.name = "Persona";
+                var p = new GameObject("Persona", typeof(MeshFilter), typeof(MeshRenderer));
                 p.transform.SetParent(fila, false);
-                p.transform.localScale = new Vector3(0.45f, 0.85f, 0.45f);
-                p.transform.position = new Vector3(este + 0.9f + i * 0.85f, 0.85f, zFila - 0.06f + (i % 2) * 0.12f);
-                p.GetComponent<MeshRenderer>().sharedMaterial = matPersonas;
+                p.transform.SetPositionAndRotation(
+                    new Vector3(este + 1.3f + i * 0.75f, 0f, zPuertaEntrada - 0.06f + (i % 2) * 0.12f),
+                    Quaternion.Euler(0f, -90f + giros[i], 0f));   // -90° = mirando al oeste, hacia la puerta
+                p.transform.localScale = Vector3.one * (alturas[i] / AlturaFigura);
+                p.GetComponent<MeshFilter>().sharedMesh = mallaFigura;
+                p.GetComponent<MeshRenderer>().sharedMaterial = tonos[tono[i]];
+                var cuerpo = p.AddComponent<CapsuleCollider>();
+                cuerpo.direction = 1;   // eje vertical
+                cuerpo.radius = 0.22f;
+                cuerpo.height = AlturaFigura;
+                cuerpo.center = new Vector3(0f, AlturaFigura / 2f, 0f);
             }
 
             return paredes;
@@ -500,6 +546,54 @@ namespace CuboPost.EditorTools
             CajaEntre("Jamba", marco, xPared - espesor, x1 + vuelo, 0f, AltoPuerta + Marco, p0 - Marco, p0, matEstructura);
             CajaEntre("Jamba", marco, xPared - espesor, x1 + vuelo, 0f, AltoPuerta + Marco, p1, p1 + Marco, matEstructura);
             CajaEntre("Dintel", marco, xPared - espesor, x1 + vuelo, AltoPuerta, AltoPuerta + Marco, p0, p1, matEstructura);
+        }
+
+        /// <summary>
+        /// El visitante: una figura como las de la plaza, de <see cref="AlturaVisitante"/>, con piernas
+        /// y brazos sueltos para que se balanceen al caminar. Lo maneja <see cref="Caminante"/>, que en
+        /// Play pone la cámara a la altura de sus ojos.
+        /// </summary>
+        static void ArmarVisitante(Camera camara, CamaraOrbita orbita)
+        {
+            var visitante = new GameObject(NombreVisitante);
+            visitante.layer = CapaSinRayos;   // así la cámara que lo sigue de atrás no choca con él
+            visitante.transform.SetPositionAndRotation(InicioVisitante, Quaternion.Euler(0f, GiroVisitante, 0f));
+
+            var control = visitante.AddComponent<CharacterController>();
+            control.height = AlturaVisitante;
+            control.radius = 0.25f;
+            control.skinWidth = 0.03f;
+            control.center = new Vector3(0f, AlturaVisitante / 2f + control.skinWidth, 0f);
+            control.stepOffset = 0.55f;    // sube cordones y el murete del anillo (0,50 m), como una persona
+            control.slopeLimit = 50f;
+            control.minMoveDistance = 0f;
+
+            var cuerpo = new GameObject("Cuerpo").transform;
+            cuerpo.SetParent(visitante.transform, false);
+            var material = Mat("Visitante", "#ede8db", 0.2f);
+            var mallas = ConstruirEntorno.MallasDeFigura(AlturaVisitante, out var pivotes);
+            var partes = new Transform[mallas.Length];
+            for (int i = 0; i < mallas.Length; i++)
+            {
+                string nombre = ConstruirEntorno.PartesDeFigura[i];
+                var parte = new GameObject(nombre, typeof(MeshFilter), typeof(MeshRenderer));
+                parte.layer = CapaSinRayos;
+                parte.transform.SetParent(cuerpo, false);
+                parte.transform.localPosition = pivotes[i];
+                parte.GetComponent<MeshFilter>().sharedMesh = Guardar(mallas[i], "Visitante · " + nombre.ToLowerInvariant() + ".asset");
+                parte.GetComponent<MeshRenderer>().sharedMaterial = material;
+                partes[i] = parte.transform;
+            }
+
+            var caminante = visitante.AddComponent<Caminante>();
+            caminante.alturaOjos = OjosVisitante;
+            caminante.camara = camara;
+            caminante.orbita = orbita;
+            caminante.cuerpo = cuerpo;
+            caminante.piernaIzquierda = partes[1];
+            caminante.piernaDerecha = partes[2];
+            caminante.brazoIzquierdo = partes[3];
+            caminante.brazoDerecho = partes[4];
         }
 
         static void AjustarCamara(CamaraOrbita orbita)
