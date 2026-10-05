@@ -20,11 +20,19 @@ y **leer** las visibles. Nadie puede editar ni borrar desde afuera.
 
 ## Moderación
 
-- **Filtro automático**: insultos, contenido sexual u ofensivo, links y teléfonos. Detecta variantes
-  (acentos, mayúsculas, "puuuto", "put0", "p.u.t.o", "p u t o"). Corre en el sitio (aviso rojo en la
-  pantalla) y también en la base, así que no se puede saltear.
-  Lista de palabras: [`docs/moderacion.js`](docs/moderacion.js) y la función `post_moderar` de `supabase.sql`
-  (mantener las dos iguales, escritas sin letras dobles: "forro" → `for[oa]s?`).
+- **Filtro automático**: insultos, contenido sexual u ofensivo, links y teléfonos. Ante un insulto el
+  aviso rojo dice "Ese tipo de insultos o vocabulario no está permitido."
+  - Palabras disfrazadas: acentos, mayúsculas, "puuuto", números o símbolos en lugar de letras ("p3lotudo",
+    "put@", "p!ja"), letras de otros alfabetos que se ven iguales, separadas ("p.u.t.o", "p u t o", "pelo tudo")
+    o escritas como suenan ("kulo", "berga", "zorete", "conxa").
+  - Por contexto: palabras que solas no insultan pero sí dirigidas a alguien ("sos un inútil", "qué basura que
+    sos"), frases que agreden ("ojalá te mueras", "nadie te quiere", "me das asco") y sarcasmo ("gracias por
+    nada"). Los elogios del deporte ("sos un animal", "sos una bestia", "rata de gimnasio") pasan.
+  - Corre en el sitio y también en la base (función `post_ofensivo`), así que no se puede saltear.
+    Listas: [`docs/moderacion.js`](docs/moderacion.js) y `post_ofensivo` en `supabase.sql` (mantener las dos
+    iguales, escritas sin acentos ni letras dobles: "forro" → `for[oa]s?`).
+- **Comienzos de dedicatoria**: 4 frases para arrancar el mensaje (opcionales). Se cambian en `docs/index.html`
+  (botones `.comienzo`).
 - **Sacar una nota de pantalla**: Supabase → Table Editor → `notas` → poner `visible` en `false`.
 
 ## API para Unity

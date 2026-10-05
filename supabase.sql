@@ -36,21 +36,42 @@ alter table public.notas add column hex text generated always as (
              when 'violeta' then '#ab8ae6' when 'crema' then '#ede8db' else '#f79ee1' end) stored;
 
 -- 2) Filtro de moderación (mismo criterio que moderacion.js) --------
-create or replace function public.post_normalizar(t text)
+-- Cómo suena: k/q → c, v → b, z → s, y → i, x → ch, sin letras dobles. Se aplica igual al texto
+-- y a las listas de palabras.
+create or replace function public.post_plegar(t text)
 returns text language sql immutable as $$
-  select regexp_replace(                                   -- puuuto → puto
-           regexp_replace(                                 -- p.u.t.o → puto
-             translate(lower(coalesce(t, '')),
-               'áéíóúüàèìòùâêîôûñ013457@$',
-               'aeiouuaeiouaeiounoieasta' || 's'),
-             '([a-z])[.\-_*·,''"]+(?=[a-z])', '\1', 'g'),
-           '([a-z])\1+', '\1', 'g');
+  select regexp_replace(replace(translate(t, 'kqvzy', 'ccbsi'), 'x', 'ch'), '([a-z])\1+', '\1', 'g');
 $$;
 
-create or replace function public.post_moderar()
-returns trigger language plpgsql as $$
+-- Minúsculas, sin acentos ni letras de otros alfabetos que se ven iguales, números y símbolos
+-- en lugar de letras ("p3lotudo", "put@", "p!ja"), sin separadores ("p.u.t.o", "p u t o") ni
+-- letras repetidas ("puuuto"), y plegado.
+create or replace function public.post_normalizar(t text)
+returns text language plpgsql immutable as $$
 declare
-  prohibidas constant text :=
+  s text := lower(normalize(coalesce(t, ''), NFKC));
+begin
+  s := regexp_replace(s, '[​-‏⁠﻿­]', '', 'g');
+  s := translate(s,
+    'áéíóúüàèìòùâêîôûñäëïöçаеорсухіјѕԁοαρτυνκιεɡß013456789@ª$§€',
+    'aeiouuaeiouaeiounaeiocaeopcyxijsdoaptuvkiegboieasgtbgaasse');
+  s := regexp_replace(s, '([a-z])[!|¡](?=[a-z])', '\1i', 'g');
+  s := regexp_replace(s, '([a-z])\+(?=[a-z])', '\1t', 'g');
+  s := regexp_replace(s, '([a-z])[^a-z0-9[:space:]]+(?=[a-z])', '\1', 'g');   -- p.u.t.o → puto
+  s := regexp_replace(s, '\y([a-z]) (?=[a-z]\y)', '\1', 'g');                  -- p u t o → puto
+  s := regexp_replace(s, '([a-z])\1+', '\1', 'g');                             -- puuuto → puto
+  return public.post_plegar(s);
+end;
+$$;
+
+-- ¿Es ofensivo? Palabras prohibidas (también disfrazadas) o insultos por el contexto: despectivas
+-- dirigidas a alguien ("sos un inútil") y frases que agreden ("ojalá te mueras", "gracias por nada").
+create or replace function public.post_ofensivo(texto text)
+returns boolean language plpgsql immutable as $$
+declare
+  t text := public.post_normalizar(texto);
+  frase text := btrim(regexp_replace(t, '[^a-z]+', ' ', 'g'));
+  prohibidas text := public.post_plegar(
     -- insultos
     'put[oa]s?|putit[oa]s?|putaz[oa]s?|hij[oa]s? de put[oa]|hdp|hdep|lpm|lptm|' ||
     'pelotud[oa]s?|bolud[oa]s?|for[oa]s?|conchud[oa]s?|la concha|concha de (tu|su)|' ||
@@ -67,14 +88,62 @@ declare
     -- drogas
     'falopa|merca|faso|' ||
     -- inglés
-    'fuck|fucking|fucker|motherfucker|shit|bitch|bitches|ashole|dick|cunt|pusy|niger|niga|whore|slut|bastard';
-  patron text := '(^|[^a-z])(' || prohibidas || ')($|[^a-z])';
+    'fuck|fucking|fucker|motherfucker|shit|bitch|bitches|ashole|dick|cunt|pusy|niger|niga|whore|slut|bastard');
+  juntas text := public.post_plegar(
+    'pelotud|conchud|imbecil|mogolic|retrasad|retardad|malparid|prostitut|motherfucker|hijodeput');
+  desp text := public.post_plegar(
+    'inutil(es)?|basuras?|lacras?|ratas?|escoria|cerd[oa]s?|asqueros[oa]s?|' ||
+    'fracasad[oa]s?|perdedor(a|es)?|mediocres?|patetic[oa]s?|ridicul[oa]s?|payas[oa]s?|' ||
+    'tont[oa]s?|bob[oa]s?|gil(es)?|salames?|nab[oa]s?|chantas?|mentiros[oa]s?|' ||
+    'traidor(a|es)?|cobardes?|vag[oa]s?|fe[oa]s?|horribles?|despreciables?|miserables?|' ||
+    'infeliz|infelices|ignorantes?|egoistas?|envidios[oa]s?|resentid[oa]s?|chor[oa]s?|' ||
+    'ladron(a|es)?|falsa?o?s?|loser|stupid|idiot|dumb|ugly');
+  relleno text := public.post_plegar('((un|una|unos|unas|el|la|los|las|re|muy|tan|mas|alto|alta|flor de|' ||
+    'tremend[oa]|terrible|medio|media|bastante|bien|tal|un pedazo de|siempre|solo|nada mas que|tremenda|gran|menudo) ){0,3}');
+  dirigidas text[] := array[
+    public.post_plegar('(sos|seas|eres|fuiste|seguis siendo|siempre fuiste|pareces|quedaste como|te ves) ') || relleno || '(' || desp || ')',
+    public.post_plegar('(es|son|sea|sean|fue|era|eran) ((re|muy|tan|mas|alto|alta|tremend[oa]|terrible|flor de) )?(un|una|unos|unas) ') || relleno || '(' || desp || ')',
+    public.post_plegar('que ((re|tan|mas|gran) )?') || '(' || desp || ')' || public.post_plegar(' (que )?(sos|eres)'),
+    '^' || public.post_plegar('((che|ei|eh|vos|para|a la|al|el|la|sos|un|una|re|muy|tal) ){0,3}') || '(' || desp || ')'
+      || public.post_plegar('( (total|absolut[oa]|de persona|humana?o?))?') || '$'];
+  agresiones text := public.post_plegar(
+    'ojala (que )?(te|se) (mueras?|muera|mueran|pudras?|pudra|lesiones|caigas|pise un auto)|' ||
+    'ojala (que )?(pierdas|nunca llegues|abandones)|' ||
+    'te (voy|vamos) a (matar|cagar a palos|romper la cara|fajar)|' ||
+    'and(a|ate) a (morir|cagar)|morite|muerete|matate|suicidate|pegate un tiro|' ||
+    'desaparece de mi vida|deja de existir|no deberias existir|ni deberias existir|' ||
+    'nadie te (quiere|soporta|banca|aguanta|extrana|necesita)|nadie los (quiere|soporta|banca)|' ||
+    'no (servis|sirves|vales|sabes) (para|ni) nada|no (servis|sirves|vales) nada|no sabes hacer nada|' ||
+    '(me |nos )?(das|dabas) (asco|pena|verguenza|lastima|bronca|vomito)|' ||
+    'te (odio|detesto|desprecio|aborrezco)|(los|las) (odio|detesto|desprecio)|' ||
+    'sos lo peor|lo peor que me paso|me arruinaste la vida|arruinaste mi vida|' ||
+    'gracias por nada|te deseo lo peor|les deseo lo peor|ojala te vaya mal|' ||
+    'que te (pise|parta|coja|atropelle)|cerra el pico|nunca te voy a perdonar');
+  elogios text := public.post_plegar('(ratas? de (gimnasio|gym|biblioteca|pista)|rata de calle)');
+  sin_elogios text;
+  d text;
+begin
+  if t ~ ('(^|[^a-z])(' || prohibidas || ')($|[^a-z])')
+     or frase ~ ('(^|[^a-z])(' || prohibidas || ')($|[^a-z])')
+     or replace(frase, ' ', '') ~ juntas then
+    return true;
+  end if;
+  sin_elogios := btrim(regexp_replace(regexp_replace(frase, '(^|[^a-z])' || elogios || '($|[^a-z])', ' ', 'g'), ' +', ' ', 'g'));
+  foreach d in array dirigidas loop
+    if sin_elogios ~ ('(^|[^a-z])' || d || '($|[^a-z])') then return true; end if;
+  end loop;
+  return frase ~ ('(^|[^a-z])(' || agresiones || ')($|[^a-z])');
+end;
+$$;
+
+create or replace function public.post_moderar()
+returns trigger language plpgsql as $$
 begin
   new.para := btrim(regexp_replace(new.para, '\s+', ' ', 'g'));
   new.mensaje := btrim(regexp_replace(new.mensaje, '\s+', ' ', 'g'));
 
-  if public.post_normalizar(new.para) ~ patron or public.post_normalizar(new.mensaje) ~ patron then
-    raise exception 'No está permitido publicar este tipo de contenido.'
+  if public.post_ofensivo(new.para) or public.post_ofensivo(new.mensaje) then
+    raise exception 'Ese tipo de insultos o vocabulario no está permitido.'
       using errcode = 'P0001', detail = 'ofensivo';
   end if;
   if (new.para || ' ' || new.mensaje) ~* '(https?://|www\.|[a-z0-9-]+\.(com|ar|net|org|io|me|ly|gg|tv|app)\y)' then

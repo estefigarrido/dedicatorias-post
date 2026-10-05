@@ -266,6 +266,34 @@ form { margin: 0; }
 .campo--error .input, .campo--error .textarea { box-shadow: inset 0 0 0 1.5px var(--rosa); }
 .campo--error .campo__ayuda { color: var(--rosa); }
 
+/* Comienzos predeterminados: fila que se desliza de borde a borde de la pantalla. */
+.comienzos { margin: -2px 0 10px; contain: inline-size; }   /* la fila no ensancha la pantalla */
+.comienzos__ayuda { display: block; margin-bottom: 8px; font-size: 12px; line-height: 16px; color: rgba(237, 232, 219, .5); }
+.comienzos__lista {
+  display: flex; gap: 8px;
+  margin: 0 -20px; padding: 0 20px 2px;
+  overflow-x: auto;
+  scroll-snap-type: x proximity;
+  scroll-padding: 0 20px;
+  scrollbar-width: none;
+}
+.comienzos__lista::-webkit-scrollbar { display: none; }
+.comienzo {
+  flex: none;
+  scroll-snap-align: start;
+  padding: 8px 14px;
+  border: 0; border-radius: 20px;
+  background: var(--crema-a10);
+  color: rgba(237, 232, 219, .85);
+  font: 600 13px/17px var(--f-texto);
+  white-space: nowrap;
+  cursor: pointer;
+  transition: background-color .2s, color .2s, transform .15s;
+}
+.comienzo:hover { background: var(--crema-a15); }
+.comienzo:active { transform: scale(.96); }
+.comienzo.activo { background: var(--crema); color: var(--oscuro); }
+
 /* ---------- moderación ---------- */
 .campo--bloqueado .input, .campo--bloqueado .textarea,
 .campo--bloqueado .input:focus-within, .campo--bloqueado .textarea:focus-within {

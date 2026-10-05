@@ -62,6 +62,15 @@
 
           <div class="campo" id="campo-msg" data-anim>
             <label class="campo__label" for="in-msg">Tu mensaje</label>
+            <div class="comienzos" role="group" aria-labelledby="ayuda-comienzos">
+              <span class="comienzos__ayuda" id="ayuda-comienzos">Empezá con una frase y seguí escribiendo, o escribí lo tuyo</span>
+              <div class="comienzos__lista">
+                <button type="button" class="comienzo" aria-pressed="false">Tu apoyo hizo más liviano el camino</button>
+                <button type="button" class="comienzo" aria-pressed="false">Cada consejo tuyo me ayudó a avanzar</button>
+                <button type="button" class="comienzo" aria-pressed="false">Qué bueno haber contado con vos</button>
+                <button type="button" class="comienzo" aria-pressed="false">Gracias por ser parte de este logro</button>
+              </div>
+            </div>
             <div class="textarea">
               <textarea id="in-msg" name="mensaje" maxlength="150" rows="3" placeholder="Gracias por…"
                         enterkeyhint="done" aria-describedby="err-msg cont-msg"></textarea>
@@ -87,7 +96,7 @@
         <div class="alerta-mod" id="alerta-mod" role="alert" hidden>
           <svg class="alerta-mod__icono" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="10"/><path d="M8.5 8.5l7 7M15.5 8.5l-7 7"/></svg>
           <div>
-            <strong>No está permitido publicar este tipo de contenido.</strong>
+            <strong id="alerta-mod-titulo">No está permitido publicar este tipo de contenido.</strong>
             <span class="alerta-mod__detalle" id="alerta-mod-detalle"></span>
           </div>
         </div>

@@ -126,8 +126,43 @@
     }
     btnContinuar.setAttribute('aria-disabled', String(Object.keys(e).length > 0 || !!bloqueo));
     if (intentoContinuar) mostrarErrores(e);
+    marcarComienzo();
     guardarBorrador();
   }
+
+  // ---------- comienzos predeterminados (opcionales) ----------
+  // Una frase para arrancar el mensaje: se escribe al principio y se puede seguir escribiendo.
+  // Tocar otra la reemplaza; tocar la elegida la saca. También se puede escribir sin elegir ninguna.
+  const botonesComienzo = $$('.comienzo');
+  const COMIENZOS = botonesComienzo.map((b) => b.textContent.trim());
+
+  function comienzoActual() {
+    return COMIENZOS.find((f) => estado.mensaje.startsWith(f)) || null;
+  }
+
+  function marcarComienzo() {
+    const actualFrase = comienzoActual();
+    botonesComienzo.forEach((b, i) => {
+      const on = COMIENZOS[i] === actualFrase;
+      b.classList.toggle('activo', on);
+      b.setAttribute('aria-pressed', String(on));
+    });
+  }
+
+  botonesComienzo.forEach((b, i) => b.addEventListener('click', () => {
+    const frase = COMIENZOS[i];
+    const previa = comienzoActual();
+    // Lo que escribieron después de la frase anterior (sin el punto que la cerraba).
+    const resto = (previa ? estado.mensaje.slice(previa.length).replace(/^[.,;:!…]?\s*/, '') : estado.mensaje.trimStart());
+    estado.mensaje = previa === frase ? resto : (frase + '. ' + resto).slice(0, MAX_MSG);
+    inMsg.value = estado.mensaje;
+    bloqueoServidor = null;
+    autoAlto();
+    render();
+    inMsg.focus({ preventScroll: true });
+    inMsg.setSelectionRange(inMsg.value.length, inMsg.value.length);
+    if (!REDUCIDO && previa !== frase) b.animate({ scale: ['1', '1.06', '1'] }, { duration: 320, easing: 'cubic-bezier(.3,1.5,.5,1)' });
+  }));
 
   // ---------- moderación ----------
   const alertaMod = $('#alerta-mod');
@@ -141,8 +176,16 @@
 
   function mostrarBloqueo(r, { animar = true } = {}) {
     bloqueado = true;
-    const donde = r.campo === 'para' ? 'En el nombre' : r.campo === 'ambos' ? 'Revisá el nombre y el mensaje' : 'En tu mensaje';
-    $('#alerta-mod-detalle').textContent = `${donde}: ${r.mensaje} Editalo para poder publicar.`;
+    if (r.motivo === 'ofensivo') {
+      // Insultos o vocabulario ofensivo (palabras o por el contexto): el aviso lo dice tal cual.
+      $('#alerta-mod-titulo').textContent = window.PostModeracion.AVISO;
+      $('#alerta-mod-detalle').textContent = r.campo === 'para' ? 'Cambiá el nombre para poder publicar.'
+        : r.campo === 'ambos' ? 'Revisá el nombre y el mensaje para poder publicar.' : 'Cambiá tu mensaje para poder publicar.';
+    } else {
+      const donde = r.campo === 'para' ? 'En el nombre' : r.campo === 'ambos' ? 'Revisá el nombre y el mensaje' : 'En tu mensaje';
+      $('#alerta-mod-titulo').textContent = 'No está permitido publicar este tipo de contenido.';
+      $('#alerta-mod-detalle').textContent = `${donde}: ${r.mensaje} Editalo para poder publicar.`;
+    }
     $('#campo-para').classList.toggle('campo--bloqueado', r.campo === 'para' || r.campo === 'ambos');
     $('#campo-msg').classList.toggle('campo--bloqueado', r.campo !== 'para');
     alertaMod.hidden = false;
@@ -391,7 +434,7 @@
 
   // ---------- envío (Supabase o servidor local) ----------
   const MOTIVOS = {
-    ofensivo: 'Tiene insultos o palabras inapropiadas.',
+    ofensivo: 'Ese tipo de insultos o vocabulario no está permitido.',
     link: 'No se pueden incluir links.',
     datos: 'No se pueden incluir números de teléfono.',
   };
