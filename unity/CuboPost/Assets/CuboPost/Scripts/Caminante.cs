@@ -6,7 +6,7 @@ namespace CuboPost
 {
     /// <summary>
     /// Visitante: la persona con la que se recorre la escena en Play.
-    ///   W A S D (o las flechas) = caminar · mouse = mirar · Shift = correr
+    ///   W A S D (o las flechas) = caminar · Espacio = saltar (0,5 m) · mouse = mirar · Shift = correr
     ///   V = ver al personaje desde atrás / volver a sus ojos
     ///   Tab = pasar a la vista general (la cámara que gira alrededor del stand) y volver
     ///   Esc = soltar el mouse · clic = volver a tomarlo
@@ -25,6 +25,14 @@ namespace CuboPost
         public float velocidad = 1.8f;
         [Tooltip("Metros por segundo con Shift apretado.")]
         public float velocidadCorriendo = 4.5f;
+        [Tooltip("Qué tan rápido llega a la velocidad al arrancar (m/s²). Más alto = más seco.")]
+        public float aceleracion = 9f;
+        [Tooltip("Qué tan rápido frena al soltar las teclas (m/s²).")]
+        public float frenado = 14f;
+        [Tooltip("Cuánto se puede corregir la dirección en el aire (0 = nada, 1 = como en el piso).")]
+        [Range(0f, 1f)] public float controlEnElAire = 0.4f;
+        [Tooltip("Altura del salto con Espacio, en metros (0,5 m = 500 unidades de diseño).")]
+        public float alturaSalto = 0.5f;
         [Tooltip("Grados que gira la vista por cada píxel que se mueve el mouse.")]
         public float sensibilidad = 0.12f;
         [Tooltip("Al dar Play arranca caminando. Si no, arranca en la vista general y se pasa con Tab.")]
@@ -50,6 +58,9 @@ namespace CuboPost
         float giro, inclinacion;      // hacia dónde mira (grados)
         float giroCuerpo;             // hacia dónde apunta el cuerpo
         float caida;                  // velocidad vertical (m/s)
+        Vector3 andar;                // velocidad horizontal actual (m/s), con aceleración y frenado
+        float ultimoPiso = -1f;       // cuándo tocó el piso por última vez (permite saltar un instante después de bajar un cordón)
+        float pidioSalto = -1f;       // cuándo se apretó Espacio (si se aprieta justo antes de caer, salta igual)
         float pisoSuave;              // altura de los pies, suavizada para la cámara
         float fase, amplitud;         // balanceo de piernas y brazos
         float campoOriginal = 50f;
@@ -147,6 +158,7 @@ namespace CuboPost
                     if (teclado.dKey.isPressed || teclado.rightArrowKey.isPressed) direccion.x += 1f;
                     if (teclado.aKey.isPressed || teclado.leftArrowKey.isPressed) direccion.x -= 1f;
                     corre = teclado.leftShiftKey.isPressed || teclado.rightShiftKey.isPressed;
+                    if (teclado.spaceKey.wasPressedThisFrame) pidioSalto = Time.time;
                 }
             }
 
@@ -157,12 +169,29 @@ namespace CuboPost
         void Mover(Vector3 direccion, bool corre)
         {
             // Adelante es hacia donde se mira (sin la inclinación: no se camina hacia el cielo).
-            var horizontal = Quaternion.Euler(0f, giro, 0f) * direccion * (corre ? velocidadCorriendo : velocidad);
+            var deseada = Quaternion.Euler(0f, giro, 0f) * direccion * (corre ? velocidadCorriendo : velocidad);
+
+            // Arranca y frena de a poco (no de golpe), y en el aire se corrige menos la dirección.
+            bool enPiso = control.isGrounded;
+            float ritmo = deseada.sqrMagnitude > 0.001f ? aceleracion : frenado;
+            if (!enPiso) ritmo *= controlEnElAire;
+            andar = Vector3.MoveTowards(andar, deseada, ritmo * Time.deltaTime);
+            var horizontal = andar;
 
             // Gravedad. En el piso queda un empuje chico hacia abajo, para no despegarse al bajar un cordón.
-            if (control.isGrounded && caida < 0f) caida = -2f;
+            if (enPiso) ultimoPiso = Time.time;
+            if (enPiso && caida < 0f) caida = -2f;
+
+            // Salto con Espacio: la velocidad justa para subir alturaSalto (v = √(2·g·h)). Se perdona
+            // un instante de más (apretar justo antes de tocar el piso o justo después de dejarlo).
+            if (pidioSalto >= 0f && Time.time - pidioSalto < 0.15f && Time.time - ultimoPiso < 0.12f && caida <= 0f)
+            {
+                caida = Mathf.Sqrt(2f * -Physics.gravity.y * alturaSalto);
+                pidioSalto = ultimoPiso = -1f;
+            }
             caida += Physics.gravity.y * Time.deltaTime;
-            control.Move((horizontal + Vector3.up * caida) * Time.deltaTime);
+            var choques = control.Move((horizontal + Vector3.up * caida) * Time.deltaTime);
+            if ((choques & CollisionFlags.Above) != 0 && caida > 0f) caida = 0f;   // se golpea la cabeza: empieza a caer
 
             // Si se cae del mundo, vuelve al punto de partida.
             if (transform.position.y < -30f)
@@ -206,7 +235,8 @@ namespace CuboPost
 
             // La altura de los pies se sigue con suavidad, así subir un cordón o el murete no es un salto.
             float y = transform.position.y;
-            pisoSuave = Mathf.Abs(y - pisoSuave) > 1.5f ? y : Mathf.Lerp(pisoSuave, y, 1f - Mathf.Exp(-14f * Time.deltaTime));
+            // En el aire (saltando o cayendo) la cámara sigue al cuerpo sin demora.
+            pisoSuave = !control.isGrounded || Mathf.Abs(y - pisoSuave) > 1.5f ? y : Mathf.Lerp(pisoSuave, y, 1f - Mathf.Exp(-14f * Time.deltaTime));
             var ojos = new Vector3(transform.position.x, pisoSuave + alturaOjos, transform.position.z);
             var mirada = Quaternion.Euler(inclinacion, giro, 0f);
 
@@ -230,7 +260,7 @@ namespace CuboPost
             bool tomado = Cursor.lockState == CursorLockMode.Locked;
             if (Time.unscaledTime > ayudaHasta && (tomado || !caminando)) return;
             string texto = !caminando ? "Tab: recorrer caminando"
-                : tomado ? "W A S D caminar · mouse mirar · Shift correr · V ver al personaje · Tab vista general · Esc soltar el mouse"
+                : tomado ? "W A S D caminar · Espacio saltar · mouse mirar · Shift correr · V ver al personaje · Tab vista general · Esc soltar el mouse"
                 : "Clic para mirar con el mouse · W A S D caminar · Tab vista general";
             if (estilo == null) estilo = new GUIStyle(GUI.skin.label) { fontSize = 15 };
             var lugar = new Rect(18f, Screen.height - 44f, Screen.width - 36f, 30f);
