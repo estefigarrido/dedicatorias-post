@@ -18,8 +18,9 @@ namespace CuboPost.EditorTools
     ///     frente (sur) y fondo (norte) de 21,50 m, lateral oeste de 7,42 m y, al este, un tramo
     ///     sobre el técnico y otro sobre el ropero; fondo #252525 con los puntos POST dispersos
     ///   · gráfica post. centrada en las dos paredes largas (frente y fondo)
-    ///   · piso relevado de 32 × 15 m, con el stand ubicado como en la implantación
-    ///   · Plaza de la República con el Obelisco de fondo.
+    ///   · piso del área relevada (32 × 15 m en los planos), con el stand ubicado como en la
+    ///     implantación; se recorta contra el anillo de la plaza
+    ///   · Plaza de la República con el Obelisco de fondo (la arma <see cref="ConstruirEntorno"/>).
     /// Por ahora es solo el exterior: los vanos de entrada y salida tienen un cierre oscuro al fondo
     /// hasta que se arme el interior (sala, mats, cortina y pantallas interiores).
     ///
@@ -27,8 +28,10 @@ namespace CuboPost.EditorTools
     ///
     /// Menú post. → Construir escena del cubo: rearma TODA la escena desde cero (plaza incluida).
     /// Menú post. → Actualizar solo el cubo: cambia el stand, los accesos y la fila en la escena
-    ///   abierta y deja la plaza como está. Esto último también corre solo cuando Unity recompila
-    ///   y encuentra que el cubo de la escena no coincide con las medidas de este archivo.
+    ///   abierta y deja la plaza como está.
+    /// Menú post. → Actualizar solo la plaza: rearma la plaza y deja el stand como está.
+    /// Las dos actualizaciones también corren solas cuando Unity recompila y encuentra que el cubo
+    /// o la plaza de la escena no coinciden con lo que dicen estos archivos.
     /// </summary>
     public static class ConstruirCubo
     {
@@ -53,11 +56,12 @@ namespace CuboPost.EditorTools
 
         // Piso rojo = superficie relevada de 32 × 15 m (implantación). El stand queda a 3,43 m del
         // borde oeste, 7,07 m del este, 1,00 m del sur y 6,58 m del norte; por eso no está centrado.
+        // Las dos esquinas del norte caen fuera de la explanada: el piso se recorta contra el anillo.
         const float PisoLargo = 32f, PisoAncho = 15f, PisoMargenOeste = 3.43f, PisoMargenSur = 1f;
-        static readonly Vector3 PlazaRojaCentro = new Vector3(
-            -Ancho / 2f - PisoMargenOeste + PisoLargo / 2f, -0.045f,
-            -Profundidad / 2f - PisoMargenSur + PisoAncho / 2f);
-        static readonly Vector3 PlazaRojaTamano = new Vector3(PisoLargo, 0.1f, PisoAncho);
+        static readonly Rect AreaRelevada = new Rect(
+            -Ancho / 2f - PisoMargenOeste, -Profundidad / 2f - PisoMargenSur, PisoLargo, PisoAncho);
+        const string NombrePiso = "Plaza roja";
+        const string NombreContexto = "Contexto (plaza)";
 
         const string Carpeta = "Assets/CuboPost/Generado";
         const string RutaEscena = "Assets/Scenes/CuboPost.unity";
@@ -87,20 +91,7 @@ namespace CuboPost.EditorTools
             var escena = EditorSceneManager.NewScene(NewSceneSetup.EmptyScene, NewSceneMode.Single);
 
             // ---------- contexto ----------
-            var matPlazaRoja = Mat("Plaza roja", "#b56a64", 0.08f);
-            var matObelisco = Mat("Obelisco", "#ebe7de", 0.15f);
-            Mat("Plaza", "#8d8a85", 0.08f);
-
-            var contexto = new GameObject("Contexto (plaza)").transform;
-            Caja("Plaza roja", contexto, PlazaRojaCentro, PlazaRojaTamano, matPlazaRoja);
-            var obelisco = new GameObject("Obelisco", typeof(MeshFilter), typeof(MeshRenderer));
-            obelisco.transform.SetParent(contexto, false);
-            // En su isla, cruzando Av. Corrientes hacia el sur (según el mapa).
-            obelisco.transform.position = new Vector3(4f, 0f, -38f);
-            obelisco.GetComponent<MeshFilter>().sharedMesh = MallaObelisco();
-            obelisco.GetComponent<MeshRenderer>().sharedMaterial = matObelisco;
-            // Calles, adoquines, semáforos, faroles, letras BA, edificios y autos.
-            ConstruirEntorno.Construir(contexto);
+            ArmarContexto();
 
             // ---------- cubo ----------
             var paredes = ArmarCubo(null);
@@ -122,11 +113,7 @@ namespace CuboPost.EditorTools
             sol.color = new Color(1f, 0.97f, 0.92f);
             sol.shadows = LightShadows.Soft;
             sol.transform.rotation = Quaternion.Euler(48f, -35f, 0f);
-
-            RenderSettings.ambientMode = AmbientMode.Trilight;
-            RenderSettings.ambientSkyColor = new Color(0.78f, 0.82f, 0.88f);
-            RenderSettings.ambientEquatorColor = new Color(0.62f, 0.62f, 0.62f);
-            RenderSettings.ambientGroundColor = new Color(0.35f, 0.33f, 0.31f);
+            Ambiente(sol);
 
             var camGo = new GameObject("Cámara");
             camGo.tag = "MainCamera";
@@ -181,12 +168,12 @@ namespace CuboPost.EditorTools
             // Lo que sigue en la escena y depende de las medidas.
             ControladorCubo controlador = null;
             CamaraOrbita orbita = null;
-            Transform plazaRoja = null;
+            Transform contexto = null;
             foreach (var raiz in escena.GetRootGameObjects())
             {
                 if (controlador == null) controlador = raiz.GetComponentInChildren<ControladorCubo>(true);
                 if (orbita == null) orbita = raiz.GetComponentInChildren<CamaraOrbita>(true);
-                if (plazaRoja == null && raiz.name == "Contexto (plaza)") plazaRoja = raiz.transform.Find("Plaza roja");
+                if (contexto == null && raiz.name == NombreContexto) contexto = raiz.transform;
             }
 
             if (controlador == null)
@@ -199,11 +186,8 @@ namespace CuboPost.EditorTools
             controlador.paredes = paredes.ToArray();
             EditorUtility.SetDirty(controlador);
 
-            if (plazaRoja != null)
-            {
-                plazaRoja.position = PlazaRojaCentro;
-                plazaRoja.localScale = PlazaRojaTamano;
-            }
+            // El piso del área relevada depende de dónde queda el stand: se rehace.
+            if (contexto != null) ArmarPiso(contexto);
 
             if (orbita != null)
             {
@@ -225,9 +209,119 @@ namespace CuboPost.EditorTools
             if (Application.isBatchMode) return;
             if (EditorApplication.isPlayingOrWillChangePlaymode || EditorApplication.isCompiling || EditorApplication.isUpdating) return;
             var escena = EditorSceneManager.GetActiveScene();
-            if (escena.path != RutaEscena || CuboAlDia(escena)) return;
-            Debug.Log("[post.] El cubo de la escena tiene medidas viejas: se actualiza solo.");
-            ActualizarCubo();
+            if (escena.path != RutaEscena) return;
+            if (!CuboAlDia(escena))
+            {
+                Debug.Log("[post.] El cubo de la escena tiene medidas viejas: se actualiza solo.");
+                ActualizarCubo();
+            }
+            if (!PlazaAlDia(escena))
+            {
+                Debug.Log("[post.] La plaza de la escena es de una versión anterior: se actualiza sola.");
+                ActualizarPlaza();
+            }
+        }
+
+        /// <summary>
+        /// ¿La plaza de la escena es la de la versión actual y está completa? Si la escena no tiene
+        /// contexto, no se toca nada.
+        /// </summary>
+        static bool PlazaAlDia(Scene escena)
+        {
+            foreach (var raiz in escena.GetRootGameObjects())
+                if (raiz.name == NombreContexto) return ConstruirEntorno.AlDia(raiz.transform);
+            return true;
+        }
+
+        /// <summary>
+        /// Rearma solo la plaza (calles, explanada, anillo, jardines, edificios, Obelisco y piso del
+        /// área relevada) en la escena abierta. El stand, el sol y la cámara quedan como están.
+        /// </summary>
+        [MenuItem("post./Actualizar solo la plaza")]
+        public static void ActualizarPlaza()
+        {
+            var escena = EditorSceneManager.GetActiveScene();
+            if (escena.path != RutaEscena)
+            {
+                Debug.LogWarning("[post.] Para actualizar la plaza, abrí primero la escena " + RutaEscena);
+                return;
+            }
+            if (EditorApplication.isPlayingOrWillChangePlaymode)
+            {
+                Debug.LogWarning("[post.] Salí del modo Play antes de actualizar la plaza.");
+                return;
+            }
+            if (!AssetDatabase.IsValidFolder(Carpeta)) AssetDatabase.CreateFolder("Assets/CuboPost", "Generado");
+            reusarMateriales = true;
+
+            Light sol = null;
+            foreach (var raiz in escena.GetRootGameObjects())
+            {
+                if (raiz.name == NombreContexto) Object.DestroyImmediate(raiz);
+                else if (sol == null) sol = raiz.GetComponentInChildren<Light>(true);
+            }
+            ArmarContexto();
+            Ambiente(sol);
+
+            EditorSceneManager.MarkSceneDirty(escena);
+            EditorSceneManager.SaveScene(escena);
+            AssetDatabase.SaveAssets();
+            Debug.Log("[post.] Plaza actualizada: " + ConstruirEntorno.Version);
+        }
+
+        /// <summary>Todo lo que rodea al stand: Obelisco, plaza y piso del área relevada.</summary>
+        static Transform ArmarContexto()
+        {
+            var matObelisco = Mat("Obelisco", "#ebe7de", 0.15f);
+            var contexto = new GameObject(NombreContexto).transform;
+            var obelisco = new GameObject("Obelisco", typeof(MeshFilter), typeof(MeshRenderer));
+            obelisco.transform.SetParent(contexto, false);
+            // En su isla, cruzando Av. Corrientes hacia el sur, sobre el eje de la plaza.
+            obelisco.transform.position = ConstruirEntorno.PosicionObelisco;
+            obelisco.GetComponent<MeshFilter>().sharedMesh = MallaObelisco();
+            obelisco.GetComponent<MeshRenderer>().sharedMaterial = matObelisco;
+            // Calles, explanada, anillo, jardines, cartel BA, mobiliario, edificios y autos.
+            ConstruirEntorno.Construir(contexto);
+            ArmarPiso(contexto);
+            return contexto;
+        }
+
+        /// <summary>Piso rojo del área relevada, recortado contra la explanada. Reemplaza al anterior.</summary>
+        static void ArmarPiso(Transform contexto)
+        {
+            var anterior = contexto.Find(NombrePiso);
+            if (anterior != null) Object.DestroyImmediate(anterior.gameObject);
+            ConstruirEntorno.PisoRelevado(contexto, AreaRelevada, Mat(NombrePiso, "#b56a64", 0.08f), NombrePiso);
+        }
+
+        /// <summary>Luz ambiente, cielo y bruma de la escena.</summary>
+        static void Ambiente(Light sol)
+        {
+            RenderSettings.ambientMode = AmbientMode.Trilight;
+            RenderSettings.ambientSkyColor = new Color(0.78f, 0.82f, 0.88f);
+            RenderSettings.ambientEquatorColor = new Color(0.62f, 0.62f, 0.62f);
+            RenderSettings.ambientGroundColor = new Color(0.35f, 0.33f, 0.31f);
+
+            // Cielo de día (el que trae Unity) con el sol de la escena, y una bruma leve a lo lejos.
+            var sombreador = Shader.Find("Skybox/Procedural");
+            if (sombreador != null)
+            {
+                var cielo = AssetDatabase.LoadAssetAtPath<Material>($"{Carpeta}/Cielo.mat");
+                if (cielo == null) cielo = Guardar(new Material(sombreador) { name = "Cielo" }, "Cielo.mat");
+                cielo.SetFloat("_SunSize", 0.035f);
+                cielo.SetFloat("_AtmosphereThickness", 0.85f);
+                cielo.SetColor("_SkyTint", new Color(0.52f, 0.60f, 0.72f));
+                cielo.SetColor("_GroundColor", new Color(0.62f, 0.62f, 0.60f));
+                cielo.SetFloat("_Exposure", 1.15f);
+                EditorUtility.SetDirty(cielo);
+                RenderSettings.skybox = cielo;
+            }
+            if (sol != null) RenderSettings.sun = sol;
+            RenderSettings.fog = true;
+            RenderSettings.fogMode = FogMode.Linear;
+            RenderSettings.fogColor = new Color(0.80f, 0.85f, 0.91f);
+            RenderSettings.fogStartDistance = 140f;
+            RenderSettings.fogEndDistance = 900f;
         }
 
         /// <summary>¿El cubo de la escena ya tiene las medidas de este archivo? Sin cubo no se toca nada.</summary>
