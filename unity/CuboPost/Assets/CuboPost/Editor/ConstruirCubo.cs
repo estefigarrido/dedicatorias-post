@@ -131,6 +131,9 @@ namespace CuboPost.EditorTools
             // ---------- cubo ----------
             var paredes = ArmarCubo(null);
 
+            // ---------- velas de sombra (fila y lado norte) ----------
+            ConstruirVelas.Armar();
+
             // Que el modo Play siga animando aunque Unity no esté en primer plano.
             PlayerSettings.runInBackground = true;
 

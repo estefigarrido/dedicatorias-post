@@ -83,6 +83,10 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   y 5 s de exhalar, 6 veces. Al inhalar aparece un anillo más grande detrás de la carita cada segundo y al exhalar
   se va uno por segundo; la carita cambia entre inhalando y exhalando. Código: `Scripts/EjercicioRespiracion.cs`,
   caritas en `Resources/Respiracion`.
+- **Velas de sombra** (plano "01 · Implantación" del Figma): 8 velas circulares (Ø 6,40 y 4,14 m) a 6,30–6,90 m,
+  tela PES crema semitraslúcida en aros de aluminio, unidas arriba en dos grupos. Tres de los postes de carga hacen
+  de soporte; los demás palos van solo en los bordes (pasto y pared del ropero) sobre bases de hormigón que son
+  bancos. Se arman solas al recompilar o con **post. → Construir velas de sombra** (`Editor/ConstruirVelas.cs`).
 - **Cámara**: arrastrar para girar · rueda para acercar · 1-4 cada pared a la altura de la fila · 0 vista general · R giro automático.
 - **Reconstruir la escena** (si se cambian medidas en el código): menú **post. → Construir escena del cubo**.
 
