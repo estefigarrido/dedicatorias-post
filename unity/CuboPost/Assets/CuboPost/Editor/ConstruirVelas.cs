@@ -28,7 +28,7 @@ namespace CuboPost.EditorTools
     /// </summary>
     public static class ConstruirVelas
     {
-        const string Version = "Velas v5";   // subir si cambia la disposición
+        const string Version = "Velas v6";   // subir si cambia la disposición
         const string NombreRaiz = "Velas de sombra";
         const string RutaEscena = "Assets/Scenes/CuboPost.unity";
         const string Carpeta = "Assets/CuboPost/Generado/Velas";
@@ -141,6 +141,9 @@ namespace CuboPost.EditorTools
             return y;
         }
 
+        // Color de cada vela, como en el plano: verde (#49b867) o violeta (#ab8ae6) de la marca.
+        static readonly bool[] VelaVerde = { true, false, false, false, true, true, false, false };
+
         static Mesh cilindro;
 
         [MenuItem("post./Construir velas de sombra")]
@@ -181,7 +184,12 @@ namespace CuboPost.EditorTools
             fundas = 0;
             var matCano = Lit("Caño aluminio blanco", "#c8cbcc", 0.45f, 0.35f);
             var matGoma = Lit("Goma de la base", "#262626", 0.1f, 0f);
-            var matTela = Tela();
+            trama = null;
+            // Materiales de versiones anteriores que ya no se usan.
+            foreach (var viejo in new[] { "Tela vela PES.mat", "Base banco.mat", "Placas de contrapeso.mat" })
+                if (AssetDatabase.LoadAssetAtPath<Object>($"{Carpeta}/{viejo}") != null) AssetDatabase.DeleteAsset($"{Carpeta}/{viejo}");
+            var matVerde = Tela(PaletaPost.Verde, "Tela vela verde");
+            var matVioleta = Tela(PaletaPost.NotaVioleta, "Tela vela violeta");
             var matPuf = TelaOutdoor();
             Physics.SyncTransforms();
 
@@ -220,7 +228,7 @@ namespace CuboPost.EditorTools
                 grupo.SetParent(raiz, false);
                 var indices = Enumerable.Range(0, Velas.Length).Where(i => Velas[i].grupo == g).ToList();
 
-                foreach (int i in indices) Vela(grupo, i, matCano, matTela);
+                foreach (int i in indices) Vela(grupo, i, matCano, VelaVerde[i] ? matVerde : matVioleta);
                 var palos = ElegirPalos(indices, deCargadores);
                 foreach (var p in palos)
                 {
@@ -376,16 +384,14 @@ namespace CuboPost.EditorTools
 
             // Contrapeso (bloques de hormigón o placas de acero) tapado por una funda de tela outdoor
             // para que nadie se golpee: un puf donde hay lugar, una mesita inflada donde no.
+            // Asiento redondo tapizado con respaldo cónico en el centro (el palo sale por arriba),
+            // montado sobre el contrapeso: se sientan alrededor, de espaldas al palo.
             if (a.banco)
-            {
-                // Banco para dos, a lo largo de la pared (norte-sur): 1,0 × 1,7 m, 45 cm de alto.
-                var banco = Funda("Banco acolchado para dos (bloques de hormigón adentro)", palo, pie, MallaFunda(0.08f, 0.75f, 0.45f, 3.2f, false), puf, 0.75f, 0.45f);
-                banco.transform.localScale = new Vector3(0.65f, 1f, 1.15f);
-            }
+                Funda("Asiento redondo para dos o más (bloques de hormigón adentro)", palo, pie, MallaAsientoRedondo(0.8f, 0.45f, 0.4f, 0.24f, 0.42f), puf, 0.8f, 0.45f);
             else if (a.mesita)
-                Funda("Mesita inflada (contrapeso de acero adentro)", palo, pie, MallaFunda(0.08f, 0.4f, 0.5f, 3.5f, true), puf, 0.4f, 0.5f);
+                Funda("Asiento redondo chico (contrapeso de acero adentro)", palo, pie, MallaAsientoRedondo(0.5f, 0.45f, 0.26f, 0.15f, 0.32f), puf, 0.5f, 0.45f);
             else
-                Funda("Puf (bloques de hormigón adentro)", palo, pie, MallaFunda(0.08f, 0.75f, 0.55f, 2.6f, false), puf, 0.75f, 0.55f);
+                Funda("Asiento redondo (bloques de hormigón adentro)", palo, pie, MallaAsientoRedondo(0.85f, 0.45f, 0.42f, 0.25f, 0.45f), puf, 0.85f, 0.45f);
 
             var arriba = a.alto + RadioAro;
             var fuste = Tubo("Palo Ø100", palo, pie + Vector3.up * 0.3f, new Vector3(a.p.x, arriba, a.p.y), RadioPalo, cano);
@@ -551,17 +557,154 @@ namespace CuboPost.EditorTools
         static void Beanbag(Transform padre, Vector2 p, Vector2 mira, Material mat)
         {
             var pie = new Vector3(p.x, AlturaPiso(p, 0.55f), p.y);
-            var bb = new GameObject("Beanbag").transform;
-            bb.SetParent(padre, false);
-            bb.position = pie;
             var hacia = mira - p;
-            bb.rotation = Quaternion.LookRotation(new Vector3(hacia.x, 0f, hacia.y));
-            var asiento = Funda("Asiento", bb, pie, MallaFunda(0f, 0.55f, 0.38f, 2.4f, false), mat, 0.55f, 0.38f);
-            asiento.transform.localPosition = new Vector3(0f, 0f, 0.08f);
-            var respaldo = Funda("Respaldo", bb, pie, MallaFunda(0f, 0.48f, 0.82f, 2.2f, false), mat, 0.48f, 0.82f);
-            respaldo.transform.localPosition = new Vector3(0f, 0f, -0.3f);
-            respaldo.transform.localRotation = Quaternion.Euler(-12f, 0f, 0f);
-            respaldo.transform.localScale = new Vector3(1.05f, 1f, 0.6f);
+            var bb = Funda("Beanbag", padre, pie, MallaBeanbag(), mat, 0.6f, 0.8f);
+            bb.transform.rotation = Quaternion.LookRotation(new Vector3(hacia.x, 0f, hacia.y));
+        }
+
+        /// <summary>
+        /// Beanbag orgánico (referencia: "Puff" de 3D Warehouse): una gota apoyada, con la base que se
+        /// ensancha y se aplasta contra el piso, el respaldo más alto atrás y el asiento hundido
+        /// adelante. Malla densa (64 × 48) con normales suaves, sin costuras. +Z = hacia adelante.
+        /// </summary>
+        static Mesh MallaBeanbag()
+        {
+            const int U = 64, V = 48;
+            const float rx = 0.58f, rz = 0.62f, alto = 0.78f;
+            var v = new List<Vector3>(); var uv = new List<Vector2>(); var tri = new List<int>();
+            for (int j = 0; j <= V; j++)
+            {
+                float lat = -Mathf.PI / 2f + Mathf.PI * j / V;   // de abajo (-90°) a arriba (90°)
+                float cy = Mathf.Cos(lat), sy = Mathf.Sin(lat);
+                for (int i = 0; i <= U; i++)
+                {
+                    float lon = Mathf.PI * 2f * i / U;
+                    var d = new Vector3(cy * Mathf.Sin(lon), sy, cy * Mathf.Cos(lon));
+                    // Alto según la dirección: atrás (-z) sube el respaldo, adelante (+z) queda bajo.
+                    float atras = Mathf.InverseLerp(1f, -1f, d.z);
+                    // La parte de arriba es más chata (potencia < 1) para que se lea como sillón y no como huevo.
+                    float h = sy > 0f ? Mathf.Pow(sy, 0.6f) * alto * Mathf.Lerp(0.38f, 1f, Mathf.SmoothStep(0f, 1f, atras)) : sy * 0.12f;
+                    // Más ancho abajo (el relleno cae y se apoya), algo más angosto arriba.
+                    float ancho = 1f + 0.16f * Mathf.Clamp01(1f - (sy + 0.3f)) - 0.1f * Mathf.Clamp01(sy);
+                    var q = new Vector3(d.x * rx * ancho, h, d.z * rz * ancho);
+                    // Asiento hundido: un pozo suave adelante del centro, solo en la parte de arriba.
+                    if (sy > 0f)
+                    {
+                        // Pozo ancho y bien marcado, con el borde redondeado alrededor (como el de la referencia).
+                        float dx = q.x / 0.4f, dz = (q.z - 0.1f) / 0.42f;
+                        float pozo = Mathf.Exp(-Mathf.Pow(dx * dx + dz * dz, 2f));
+                        q.y -= 0.36f * pozo * Mathf.SmoothStep(0f, 1f, sy * 1.4f);
+                        // Respaldo apenas inclinado hacia atrás.
+                        q.z -= 0.08f * sy * atras;
+                    }
+                    v.Add(q + Vector3.up * 0.12f);
+                    uv.Add(new Vector2((float)i / U * 3.5f, (float)j / V * 2f));
+                }
+            }
+            for (int j = 0; j < V; j++)
+            for (int i = 0; i < U; i++)
+            {
+                int a = j * (U + 1) + i, b = a + U + 1;
+                tri.AddRange(new[] { a, a + 1, b, a + 1, b + 1, b });
+            }
+            var m = new Mesh { name = "Beanbag" };
+            m.SetVertices(v); m.SetUVs(0, uv); m.SetTriangles(tri, 0);
+            m.RecalculateNormals();
+            // Sin costura: los vértices repetidos del borde (lon 0 y 360°) comparten normal.
+            var normales = m.normals;
+            for (int j = 0; j <= V; j++)
+            {
+                int a = j * (U + 1), b = a + U;
+                var n = (normales[a] + normales[b]).normalized;
+                normales[a] = normales[b] = n;
+            }
+            // Polos (centro del asiento y de la base): todos los vértices coinciden; normal limpia.
+            for (int i = 0; i <= U; i++)
+            {
+                normales[i] = Vector3.down;
+                normales[V * (U + 1) + i] = Vector3.up;
+            }
+            m.normals = normales;
+            m.RecalculateBounds();
+            return m;
+        }
+
+        /// <summary>
+        /// Asiento redondo tapizado (referencia: banco circular con respaldo cónico alrededor de una
+        /// columna): cilindro de radio R y alto H con el canto redondeado y, en el centro, un respaldo
+        /// cónico de rBase a rTope y altoRespaldo, con el hueco del palo arriba.
+        /// </summary>
+        static Mesh MallaAsientoRedondo(float R, float H, float rBase, float rTope, float altoRespaldo)
+        {
+            const float canto = 0.07f;
+            var perfil = new List<Vector2> { new Vector2(0f, 0f), new Vector2(R - 0.02f, 0f) };
+            // Canto del asiento (abajo apenas, arriba bien redondeado).
+            for (int k = 0; k <= 6; k++)
+            {
+                float t = -Mathf.PI / 2f + Mathf.PI / 2f * k / 6f;
+                perfil.Add(new Vector2(R - 0.02f + 0.02f * Mathf.Cos(t), 0.02f + 0.02f * Mathf.Sin(t)));
+            }
+            for (int k = 0; k <= 10; k++)
+            {
+                float t = Mathf.PI / 2f * k / 10f;
+                perfil.Add(new Vector2(R - canto + canto * Mathf.Cos(t), H - canto + canto * Mathf.Sin(t)));
+            }
+            // Almohadón del asiento: apenas abombado hacia el centro, y la unión con el respaldo.
+            for (int k = 1; k <= 6; k++)
+            {
+                float f = k / 6f;
+                perfil.Add(new Vector2(Mathf.Lerp(R - canto, rBase + 0.03f, f), H + 0.015f * Mathf.Sin(f * Mathf.PI)));
+            }
+            // Respaldo cónico, con el borde de arriba redondeado.
+            const float cantoArriba = 0.05f;
+            perfil.Add(new Vector2(rBase, H + 0.03f));
+            perfil.Add(new Vector2(rTope + cantoArriba, H + altoRespaldo - cantoArriba));
+            for (int k = 1; k <= 8; k++)
+            {
+                float t = Mathf.PI / 2f * k / 8f;
+                perfil.Add(new Vector2(rTope + cantoArriba * Mathf.Cos(t), H + altoRespaldo - cantoArriba + cantoArriba * Mathf.Sin(t)));
+            }
+            perfil.Add(new Vector2(0.07f, H + altoRespaldo));   // hueco del palo
+            return Revolucion(perfil, 72, "Asiento redondo");
+        }
+
+        /// <summary>Malla de revolución alrededor del eje Y (perfil de abajo hacia afuera y arriba).</summary>
+        static Mesh Revolucion(List<Vector2> perfil, int sectores, string nombre)
+        {
+            int K = perfil.Count;
+            // La textura sigue el largo real del perfil (en metros), así la tela no se estira en vetas.
+            var largo = new float[K];
+            for (int k = 1; k < K; k++) largo[k] = largo[k - 1] + Vector2.Distance(perfil[k - 1], perfil[k]);
+            float vuelta = 2f * Mathf.PI * perfil.Max(p => p.x);
+            var v = new List<Vector3>(); var uv = new List<Vector2>(); var tri = new List<int>();
+            for (int i = 0; i <= sectores; i++)
+            {
+                float t = i * Mathf.PI * 2f / sectores;
+                for (int k = 0; k < K; k++)
+                {
+                    v.Add(new Vector3(perfil[k].x * Mathf.Cos(t), perfil[k].y, perfil[k].x * Mathf.Sin(t)));
+                    uv.Add(new Vector2((float)i / sectores * vuelta, largo[k]));
+                }
+            }
+            for (int i = 0; i < sectores; i++)
+            for (int k = 0; k < K - 1; k++)
+            {
+                int a0 = i * K + k, b0 = a0 + 1, a1 = a0 + K, b1 = a1 + 1;
+                tri.AddRange(new[] { a0, b0, a1, b0, b1, a1 });
+            }
+            var m = new Mesh { name = nombre };
+            m.SetVertices(v); m.SetUVs(0, uv); m.SetTriangles(tri, 0);
+            m.RecalculateNormals();
+            var normales = m.normals;
+            for (int k = 0; k < K; k++)
+            {
+                int a = k, b = sectores * K + k;
+                var n = (normales[a] + normales[b]).normalized;
+                normales[a] = normales[b] = n;
+            }
+            m.normals = normales;
+            m.RecalculateBounds();
+            return m;
         }
 
         // ---------------- fundas de tela outdoor ----------------
@@ -642,7 +785,7 @@ namespace CuboPost.EditorTools
             tex.SetPixels32(px);
             tex.Apply(true);
             Guardar(tex, "Bouclé outdoor.asset");
-            var m = Lit("Tela outdoor beanbag", "#a3ac8f", 0.08f, 0f);
+            var m = Lit("Tela outdoor beanbag", "#49b867", 0.08f, 0f);   // verde de la marca
             m.SetTexture("_BaseMap", tex);
             m.SetTextureScale("_BaseMap", new Vector2(3f, 3f));
             EditorUtility.SetDirty(m);
@@ -785,9 +928,36 @@ namespace CuboPost.EditorTools
             return Guardar(m, nombre + ".mat");
         }
 
-        /// <summary>Tela PES crema, semitraslúcida (~70 %), con la trama apenas visible.</summary>
-        static Material Tela()
+        static Texture2D trama;
+
+        /// <summary>Tela PES del color de la marca, semitraslúcida (~70 %), con la trama apenas visible.</summary>
+        static Material Tela(Color color, string nombre)
         {
+            var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = nombre };
+            var c = color;
+            c.a = OpacidadTela;
+            m.SetColor("_BaseColor", c);
+            m.SetTexture("_BaseMap", Trama());
+            m.SetTextureScale("_BaseMap", new Vector2(6f, 6f));   // 6 repeticiones de la trama por metro
+            m.SetFloat("_Smoothness", 0.15f);
+            m.SetFloat("_Metallic", 0f);
+            // Transparente (mezcla alfa), sin escribir profundidad.
+            m.SetFloat("_Surface", 1f);
+            m.SetFloat("_Blend", 0f);
+            m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
+            m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
+            m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
+            m.SetFloat("_ZWrite", 0f);
+            m.SetOverrideTag("RenderType", "Transparent");
+            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
+            m.renderQueue = (int)RenderQueue.Transparent;
+            return Guardar(m, nombre + ".mat");
+        }
+
+        static Texture2D Trama()
+        {
+            if (trama != null) return trama;
             const int n = 64;
             var tex = new Texture2D(n, n, TextureFormat.RGBA32, true) { name = "Trama PES", wrapMode = TextureWrapMode.Repeat, anisoLevel = 8 };
             var px = new Color32[n * n];
@@ -803,28 +973,7 @@ namespace CuboPost.EditorTools
             }
             tex.SetPixels32(px);
             tex.Apply(true);
-            Guardar(tex, "Trama PES.asset");
-
-            var m = new Material(Shader.Find("Universal Render Pipeline/Lit")) { name = "Tela vela PES" };
-            var c = PaletaPost.Crema;
-            c.a = OpacidadTela;
-            m.SetColor("_BaseColor", c);
-            m.SetTexture("_BaseMap", tex);
-            m.SetTextureScale("_BaseMap", new Vector2(6f, 6f));   // 6 repeticiones de la trama por metro
-            m.SetFloat("_Smoothness", 0.15f);
-            m.SetFloat("_Metallic", 0f);
-            // Transparente (mezcla alfa), sin escribir profundidad.
-            m.SetFloat("_Surface", 1f);
-            m.SetFloat("_Blend", 0f);
-            m.SetFloat("_SrcBlend", (float)BlendMode.SrcAlpha);
-            m.SetFloat("_DstBlend", (float)BlendMode.OneMinusSrcAlpha);
-            m.SetFloat("_SrcBlendAlpha", (float)BlendMode.One);
-            m.SetFloat("_DstBlendAlpha", (float)BlendMode.OneMinusSrcAlpha);
-            m.SetFloat("_ZWrite", 0f);
-            m.SetOverrideTag("RenderType", "Transparent");
-            m.EnableKeyword("_SURFACE_TYPE_TRANSPARENT");
-            m.renderQueue = (int)RenderQueue.Transparent;
-            return Guardar(m, "Tela vela PES.mat");
+            return trama = Guardar(tex, "Trama PES.asset");
         }
 
         static T Guardar<T>(T asset, string archivo) where T : Object
