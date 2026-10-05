@@ -44,7 +44,6 @@ namespace CuboPost
         const string NombreLienzo = "Respiración (canvas)";
         const float MetrosPorUnidad = 0.001f;   // 1 unidad del lienzo = 1 mm
         const float AltoLeyenda = 300f;         // franja de abajo para "INHALÁ" / "EXHALÁ"
-        const string TextoEspera = "TOCÁ E PARA RESPIRAR";
 
         RectTransform lienzo, cara;
         RawImage[] anillos;
@@ -79,7 +78,7 @@ namespace CuboPost
             var centro = new Vector2(0f, tam.y / 2f - diametro / 2f);
             float k = diametro / DiametroMayor;
 
-            var disco = RecursosPost.Punto(Color.white, Color.white, 0f);
+            var disco = DiscoDifuminado();
             anillos = new RawImage[DiametrosAnillo.Length];
             presencia = new float[DiametrosAnillo.Length];
             for (int i = anillos.Length - 1; i >= 0; i--)   // del más grande al más chico: los grandes quedan detrás
@@ -112,6 +111,36 @@ namespace CuboPost
             activo = false;
             mezclaCara = 0f;
             Dibujar(-1f, 0f, true);
+        }
+
+        /// <summary>0 → 1 → 0: dos golpes cortos por latido (el segundo más suave), 0,92 s por latido.</summary>
+        static float Latido(float tiempo)
+        {
+            float f = tiempo / 0.92f % 1f;
+            float golpe(float centro, float ancho) => Mathf.Exp(-Mathf.Pow((f - centro) / ancho, 2f));
+            return Mathf.Clamp01(golpe(0.1f, 0.06f) + 0.6f * golpe(0.32f, 0.07f));
+        }
+
+        static Texture2D discoDifuminado;
+
+        /// <summary>Disco blanco con el borde difuminado: el último 30 % del radio se desvanece de a poco.</summary>
+        static Texture2D DiscoDifuminado()
+        {
+            if (discoDifuminado != null) return discoDifuminado;
+            const int n = 256;
+            var t = new Texture2D(n, n, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, name = "Disco difuminado" };
+            var px = new Color32[n * n];
+            float c = n / 2f;
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float d = Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(c, c)) / c;   // 0 centro, 1 borde
+                float a = Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(1f, 0.7f, d));
+                px[y * n + x] = new Color32(255, 255, 255, (byte)(a * 255));
+            }
+            t.SetPixels32(px);
+            t.Apply(true);
+            return discoDifuminado = t;
         }
 
         void Borrar()
@@ -180,7 +209,7 @@ namespace CuboPost
                 float restan = inhalando ? segundosInhalar - fase : segundosInhalar + segundosExhalar - fase;
                 leyenda.text = (inhalando ? "INHALÁ  " : "EXHALÁ  ") + Mathf.CeilToInt(restan);
             }
-            else leyenda.text = TextoEspera;
+            else leyenda.text = "";   // en espera no se muestra nada: la E es solo un atajo para manejarlo
 
             float paso01 = inmediato ? 1f : dt / Mathf.Max(0.01f, segundosAnillo);
             for (int i = 0; i < n; i++)
@@ -193,12 +222,13 @@ namespace CuboPost
                 anillos[i].rectTransform.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, p);
             }
 
-            // Carita: cambia con un fundido corto y "respira" apenas (crece un 5 % al inhalar).
+            // Carita: cambia con un fundido corto, "respira" apenas (crece un 5 % al inhalar) y late
+            // suave todo el tiempo (doble golpe, como un corazón tranquilo, ~65 por minuto).
             mezclaCara = Mathf.MoveTowards(mezclaCara, t >= 0f && inhalando ? 1f : 0f, inmediato ? 1f : dt / 0.25f);
             caraInhalando.color = new Color(1f, 1f, 1f, mezclaCara);
             caraExhalando.color = new Color(1f, 1f, 1f, 1f - mezclaCara);
             float aire = t < 0f ? 0f : Mathf.SmoothStep(0f, 1f, inhalando ? avance : 1f - avance);
-            cara.localScale = Vector3.one * (1f + 0.05f * aire);
+            cara.localScale = Vector3.one * (1f + 0.05f * aire + 0.035f * Latido(Application.isPlaying ? Time.time : 0f));
         }
     }
 }
