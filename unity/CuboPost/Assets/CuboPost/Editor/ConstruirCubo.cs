@@ -10,19 +10,20 @@ namespace CuboPost.EditorTools
 {
     /// <summary>
     /// Arma el stand a escala real (metros) según los planos con cotas del Figma ("prueba mapa",
-    /// sección "post. · planos con cotas": planta general, acceso/ropero/salida, corte e implantación):
-    ///   planta 21,50 × 7,42 m · altura total 4 m (3,50 m de pared + 0,50 m de coronamiento)
-    ///   · sala de 20 × 7,42 m y, pegada al lado este, la franja de servicios de 1,50 m:
-    ///     de norte a sur, técnico + depósito 1,72 · entrada 1,94 · ropero 1,77 · salida 1,99
-    ///   · pantallas LED exteriores en todo el perímetro menos en los vanos de entrada y salida:
-    ///     frente (sur) y fondo (norte) de 21,50 m, lateral oeste de 7,42 m y, al este, un tramo
-    ///     sobre el técnico y otro sobre el ropero; fondo #252525 con los puntos POST dispersos
+    /// sección "post. · planos con cotas") y el corte transversal nuevo que pasó Estefi:
+    ///   planta 21,50 × 12,42 m · altura total 6 m (5,50 m de pared + 0,50 m de coronamiento)
+    ///   · sala de 20 × 12,42 m en dos mitades de 6,21 m (de la pantalla al mat 3,00 · mat 0,71 ·
+    ///     del mat a la cortina 2,50) y, pegada al lado este, la franja de servicios de 1,50 m:
+    ///     de norte a sur, técnico + depósito 2,88 · entrada 3,25 · ropero 2,96 · salida 3,33
+    ///   · pantallas LED exteriores en todo el perímetro: frente (sur) y fondo (norte) de 21,50 m
+    ///     y los dos laterales de 12,42 m. La del lado este (el de la entrada) es una sola pantalla
+    ///     corrida, con dos puertas de 0,90 × 2,10 m: la de entrada y la de salida, cada una
+    ///     centrada en su tramo de la franja; fondo #252525 con los puntos POST dispersos
     ///   · gráfica post. centrada en las dos paredes largas (frente y fondo)
-    ///   · piso del área relevada (32 × 15 m en los planos), con el stand ubicado como en la
-    ///     implantación; se recorta contra el anillo de la plaza
     ///   · Plaza de la República con el Obelisco de fondo (la arma <see cref="ConstruirEntorno"/>).
-    /// Por ahora es solo el exterior: los vanos de entrada y salida tienen un cierre oscuro al fondo
-    /// hasta que se arme el interior (sala, mats, cortina y pantallas interiores).
+    ///     El stand apoya directo sobre los adoquines de la explanada (ya no hay piso rojo).
+    /// Por ahora es solo el exterior: detrás de las puertas de entrada y salida hay un cierre oscuro
+    /// al fondo hasta que se arme el interior (sala, mats, cortina y pantallas interiores).
     ///
     /// Ejes: +X = este, +Z = norte. El stand queda centrado en el origen.
     ///
@@ -39,28 +40,31 @@ namespace CuboPost.EditorTools
         const float LargoSala = 20f;       // sala, de oeste a este
         const float Franja = 1.5f;         // franja de servicios, pegada al lado este
         const float Ancho = LargoSala + Franja;             // 21,50 m: frente (sur) y fondo (norte)
-        const float Profundidad = 7.42f;   // laterales: dos mitades de 3,71 m
-        const float AltoPared = 3.5f;      // pared con pantalla
+        // Laterales: dos mitades de 6,21 m. Cada mitad, según el corte transversal: 3,00 m de la
+        // pantalla al mat, 0,71 m de mat y 2,50 m del mat a la cortina (antes 2,00 · 0,71 · 1,00 = 7,42 m).
+        const float Profundidad = 12.42f;
+        const float AltoPared = 5.5f;      // pared con pantalla (eran 3,50 m; Estefi pidió 2 m más de altura)
         const float Coronamiento = 0.5f;   // franja oscura de arriba
-        const float AltoTotal = AltoPared + Coronamiento;   // 4 m
+        const float AltoTotal = AltoPared + Coronamiento;   // 6 m
         const float Zocalo = 0.2f;         // la pantalla arranca a 20 cm del piso
-        const float AltoPantalla = AltoPared - Zocalo;      // 3,3 m de LED
-        // Franja de servicios, de norte a sur. Los cuatro tramos suman 7,42 m.
-        const float Tecnico = 1.72f, Entrada = 1.94f, Ropero = 1.77f, Salida = 1.99f;
-        // Alto libre de los vanos de entrada y salida. No figura en los planos: es el de la entrada anterior.
+        const float AltoPantalla = AltoPared - Zocalo;      // 5,3 m de LED
+        // Franja de servicios, de norte a sur. Los cuatro tramos suman 12,42 m. Los planos todavía
+        // no tienen la franja para este fondo: son los tramos de antes (1,72 · 1,94 · 1,77 · 1,99)
+        // agrandados en la misma proporción que el stand. Si se definen otros, se cambian acá.
+        const float Tecnico = 2.88f, Entrada = 3.25f, Ropero = 2.96f, Salida = 3.33f;
+        // Puertas de entrada y de salida: 0,90 m de ancho (lo pidió Estefi). El alto no figura en
+        // los planos: 2,10 m, el de una puerta común. Alrededor, un marco oscuro de 5 cm.
+        const float AnchoPuerta = 0.9f, AltoPuerta = 2.1f, Marco = 0.05f;
+        // Alto libre de los pasillos de entrada y salida, detrás de la pantalla.
         const float AltoAcceso = 2.8f;
         // Ropero: una puerta de 0,50 m hacia la entrada y otra hacia la salida.
         const float PuertaRopero = 0.5f, AltoPuertaRopero = 2.05f;
         // Vista general de la cámara.
         const float DistanciaCamara = 32f;
 
-        // Piso rojo = superficie relevada de 32 × 15 m (implantación). El stand queda a 3,43 m del
-        // borde oeste, 7,07 m del este, 1,00 m del sur y 6,58 m del norte; por eso no está centrado.
-        // Las dos esquinas del norte caen fuera de la explanada: el piso se recorta contra el anillo.
-        const float PisoLargo = 32f, PisoAncho = 15f, PisoMargenOeste = 3.43f, PisoMargenSur = 1f;
-        static readonly Rect AreaRelevada = new Rect(
-            -Ancho / 2f - PisoMargenOeste, -Profundidad / 2f - PisoMargenSur, PisoLargo, PisoAncho);
-        const string NombrePiso = "Plaza roja";
+        // Las escenas anteriores tenían un piso rojo (el área relevada de 32 × 15 m). Ya no va: si
+        // la escena lo tiene, se saca al actualizar el cubo.
+        const string NombrePisoRojo = "Plaza roja";
         const string NombreContexto = "Contexto (plaza)";
 
         const string Carpeta = "Assets/CuboPost/Generado";
@@ -74,10 +78,16 @@ namespace CuboPost.EditorTools
         /// r2: gráfica post. también en el frente y fondo de pantallas #252525.
         /// r3: las dedicatorias salen solo en la pantalla del frente.
         /// r4: stand de 21,50 × 7,42 m con la franja de servicios al este (solo exterior).
+        /// r5: fondo de 12,42 m (3,00 + 0,71 + 2,50 por mitad), franja en proporción y sin piso rojo.
+        /// r6: 2 m más de altura (pantalla hasta 5,50 m, 6 m en total).
+        /// r7: el lado este es una sola pantalla corrida con dos puertas de 0,90 m (entrada y salida).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} accesos {9} r4",
-            Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AltoAcceso);
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} r7",
+            Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta);
+
+        // Mallas de las pantallas que ya no existen (el lado este tenía dos tramos): se borran al actualizar.
+        static readonly string[] MallasViejas = { "Pantalla derecha (ropero).asset", "Pantalla derecha (técnico).asset" };
 
         // true = usar los materiales que ya existen (para no romper lo que sigue en la escena).
         static bool reusarMateriales;
@@ -164,6 +174,8 @@ namespace CuboPost.EditorTools
 
             var paredes = ArmarCubo(previas);
             if (viejo != null) Object.DestroyImmediate(viejo);
+            foreach (var malla in MallasViejas)
+                if (AssetDatabase.LoadAssetAtPath<Object>($"{Carpeta}/{malla}") != null) AssetDatabase.DeleteAsset($"{Carpeta}/{malla}");
 
             // Lo que sigue en la escena y depende de las medidas.
             ControladorCubo controlador = null;
@@ -186,8 +198,8 @@ namespace CuboPost.EditorTools
             controlador.paredes = paredes.ToArray();
             EditorUtility.SetDirty(controlador);
 
-            // El piso del área relevada depende de dónde queda el stand: se rehace.
-            if (contexto != null) ArmarPiso(contexto);
+            // El piso rojo del área relevada ya no va: si la escena lo tiene, se saca.
+            if (contexto != null) QuitarPisoRojo(contexto);
 
             if (orbita != null)
             {
@@ -234,8 +246,8 @@ namespace CuboPost.EditorTools
         }
 
         /// <summary>
-        /// Rearma solo la plaza (calles, explanada, anillo, jardines, edificios, Obelisco y piso del
-        /// área relevada) en la escena abierta. El stand, el sol y la cámara quedan como están.
+        /// Rearma solo la plaza (calles, explanada, anillo, jardines, edificios y Obelisco) en la
+        /// escena abierta. El stand, el sol y la cámara quedan como están.
         /// </summary>
         [MenuItem("post./Actualizar solo la plaza")]
         public static void ActualizarPlaza()
@@ -269,7 +281,7 @@ namespace CuboPost.EditorTools
             Debug.Log("[post.] Plaza actualizada: " + ConstruirEntorno.Version);
         }
 
-        /// <summary>Todo lo que rodea al stand: Obelisco, plaza y piso del área relevada.</summary>
+        /// <summary>Todo lo que rodea al stand: el Obelisco y la plaza.</summary>
         static Transform ArmarContexto()
         {
             var matObelisco = Mat("Obelisco", "#ebe7de", 0.15f);
@@ -282,16 +294,16 @@ namespace CuboPost.EditorTools
             obelisco.GetComponent<MeshRenderer>().sharedMaterial = matObelisco;
             // Calles, explanada, anillo, jardines, cartel BA, mobiliario, edificios y autos.
             ConstruirEntorno.Construir(contexto);
-            ArmarPiso(contexto);
             return contexto;
         }
 
-        /// <summary>Piso rojo del área relevada, recortado contra la explanada. Reemplaza al anterior.</summary>
-        static void ArmarPiso(Transform contexto)
+        /// <summary>Saca el piso rojo que tenían las escenas anteriores, y su material.</summary>
+        static void QuitarPisoRojo(Transform contexto)
         {
-            var anterior = contexto.Find(NombrePiso);
-            if (anterior != null) Object.DestroyImmediate(anterior.gameObject);
-            ConstruirEntorno.PisoRelevado(contexto, AreaRelevada, Mat(NombrePiso, "#b56a64", 0.08f), NombrePiso);
+            var piso = contexto.Find(NombrePisoRojo);
+            if (piso != null) Object.DestroyImmediate(piso.gameObject);
+            var material = $"{Carpeta}/{NombrePisoRojo}.mat";
+            if (AssetDatabase.LoadAssetAtPath<Material>(material) != null) AssetDatabase.DeleteAsset(material);
         }
 
         /// <summary>Luz ambiente, cielo y bruma de la escena.</summary>
@@ -341,9 +353,9 @@ namespace CuboPost.EditorTools
 
         /// <summary>
         /// Crea "Cubo post." con estructura, pantallas, franja de servicios y fila, y devuelve las
-        /// pantallas en orden, recorriendo el perímetro (frente, derecha · ropero, derecha · técnico,
-        /// fondo, izquierda). <paramref name="previas"/>: ajustes de las pantallas anteriores (por
-        /// nombre) para conservarlos; null si se arma de cero.
+        /// pantallas en orden, recorriendo el perímetro (frente, derecha, fondo, izquierda).
+        /// <paramref name="previas"/>: ajustes de las pantallas anteriores (por nombre) para
+        /// conservarlos; null si se arma de cero.
         /// </summary>
         static List<ParedPantalla> ArmarCubo(Dictionary<string, string> previas)
         {
@@ -365,44 +377,54 @@ namespace CuboPost.EditorTools
             var cubo = new GameObject(NombreCubo).transform;
             new GameObject(Firma).transform.SetParent(cubo, false);   // marca de medidas (objeto vacío)
 
+            // Puertas del lado este, cada una centrada en su tramo de la franja.
+            float zPuertaEntrada = (zEntrada + zTecnico) / 2f;
+            float zPuertaSalida = (sur + zRopero) / 2f;
+            float medioVano = AnchoPuerta / 2f + Marco;       // la pantalla se abre para la puerta y su marco
+            var puertas = new[] { zPuertaSalida, zPuertaEntrada };   // de sur a norte
+
             var estructura = new GameObject("Estructura").transform;
             estructura.SetParent(cubo, false);
-            // Zócalo: corre por todo el perímetro menos en los vanos de entrada y salida.
+            // Zócalo: corre por todo el perímetro menos en las dos puertas.
             CajaEntre("Zócalo sala", estructura, oeste - vuelo, xFranja, 0f, Zocalo, sur - vuelo, norte + vuelo, matEstructura);
-            CajaEntre("Zócalo técnico", estructura, xFranja, este + vuelo, 0f, Zocalo, zTecnico + 0.01f, norte + vuelo, matEstructura);
-            CajaEntre("Zócalo ropero", estructura, xFranja, este + vuelo, 0f, Zocalo, zRopero + 0.01f, zEntrada - 0.01f, matEstructura);
-            CajaEntre("Zócalo salida (lado sur)", estructura, xFranja, este + vuelo, 0f, Zocalo, sur - vuelo, sur + 0.09f, matEstructura);
-            // Coronamiento: franja oscura de 0,50 m sobre las pantallas (de 3,50 a 4 m). Hace de techo.
+            float zDesde = sur - vuelo, xZocalo = este - 0.12f;   // al este es angosto: detrás están los pasillos
+            foreach (var z in puertas)
+            {
+                CajaEntre("Zócalo este", estructura, xZocalo, este + vuelo, 0f, Zocalo, zDesde, z - medioVano, matEstructura);
+                zDesde = z + medioVano;
+            }
+            CajaEntre("Zócalo este", estructura, xZocalo, este + vuelo, 0f, Zocalo, zDesde, norte + vuelo, matEstructura);
+            // Coronamiento: franja oscura de 0,50 m sobre las pantallas (de 5,50 a 6 m). Hace de techo.
             Caja("Coronamiento", estructura, new Vector3(0, AltoPared + Coronamiento / 2f, 0), new Vector3(Ancho + 0.16f, Coronamiento, Profundidad + 0.16f), matEstructura);
             foreach (var sx in new[] { -1f, 1f })
             foreach (var sz in new[] { -1f, 1f })
                 Caja("Esquinero", estructura, new Vector3(sx * Ancho / 2f, AltoPared / 2f, sz * Profundidad / 2f), new Vector3(0.12f, AltoPared, 0.12f), matEstructura);
-            // Parantes del lado este, entre cada tramo de pantalla y el vano de al lado.
-            foreach (var z in new[] { zTecnico, zEntrada, zRopero })
-                Caja("Parante", estructura, new Vector3(este, AltoPared / 2f, z), new Vector3(0.12f, AltoPared, 0.12f), matEstructura);
 
             // Pantallas: recorren el perímetro en orden (frente → derecha → fondo → izquierda) para que
-            // el degradé pase de una a otra sin cortes. El lado este tiene dos tramos (ropero y técnico):
-            // entre ellos y hasta la esquina sur quedan los vanos de entrada y salida, sin pantalla.
+            // el degradé pase de una a otra sin cortes. La del lado este es una sola, de punta a punta,
+            // con el hueco de las dos puertas (medido desde su extremo sur y desde el borde de abajo).
             var pantallas = new GameObject("Pantallas LED").transform;
             pantallas.SetParent(cubo, false);
             float perimetro = 2f * (Ancho + Profundidad);
             float yCentro = Zocalo + AltoPantalla / 2f;
-            var paredes = new List<ParedPantalla>
-            {
-                Pared("Pantalla frente", pantallas, new Vector3(0, yCentro, sur), Vector3.back, Ancho, 0f, perimetro, matGradiente, previas),
-                Pared("Pantalla derecha (ropero)", pantallas, new Vector3(este, yCentro, zRopero + Ropero / 2f), Vector3.right, Ropero, Ancho + Salida, perimetro, matGradiente, previas, "Pantalla derecha"),
-                Pared("Pantalla derecha (técnico)", pantallas, new Vector3(este, yCentro, zTecnico + Tecnico / 2f), Vector3.right, Tecnico, Ancho + Salida + Ropero + Entrada, perimetro, matGradiente, previas, "Pantalla derecha"),
-                Pared("Pantalla fondo", pantallas, new Vector3(0, yCentro, norte), Vector3.forward, Ancho, Ancho + Profundidad, perimetro, matGradiente, previas),
-                Pared("Pantalla izquierda", pantallas, new Vector3(oeste, yCentro, 0), Vector3.left, Profundidad, 2f * Ancho + Profundidad, perimetro, matGradiente, previas),
-            };
+            var vanos = new List<Rect>();
+            foreach (var z in puertas)
+                vanos.Add(new Rect(z - medioVano - sur, 0f, 2f * medioVano, AltoPuerta + Marco - Zocalo));
+            var frente = Pared("Pantalla frente", pantallas, new Vector3(0, yCentro, sur), Vector3.back, Ancho, 0f, perimetro, matGradiente, previas);
+            var derecha = Pared("Pantalla derecha", pantallas, new Vector3(este, yCentro, 0), Vector3.right, Profundidad, Ancho, perimetro, matGradiente, previas, "Pantalla derecha (ropero)", vanos);
+            var fondo = Pared("Pantalla fondo", pantallas, new Vector3(0, yCentro, norte), Vector3.forward, Ancho, Ancho + Profundidad, perimetro, matGradiente, previas);
+            var izquierda = Pared("Pantalla izquierda", pantallas, new Vector3(oeste, yCentro, 0), Vector3.left, Profundidad, 2f * Ancho + Profundidad, perimetro, matGradiente, previas);
+            var paredes = new List<ParedPantalla> { frente, derecha, fondo, izquierda };
+            // Ni puntos ni notas sobre las puertas (con un margen alrededor del marco).
+            foreach (var v in vanos)
+                derecha.zonasBloqueadas.Add(new Rect(v.x - 0.1f, 0f, v.width + 0.2f, v.height + 0.1f));
 
             // Paredes largas (frente y fondo): gráfica post. centrada, como en el frame del Figma
             // (1622:4941). El alto del frame es el alto de la pantalla, y la elipse roja del frame
             // (todo el alto, 1286 px de ancho por cada 637 de alto) es donde no pueden ir notas ni
             // puntos sueltos, así nada tapa el logo; las notas van a los costados.
             float anchoElipse = AltoPantalla * ParedPantalla.FigmaAnchoElipse / ParedPantalla.FigmaAltoFrame;
-            foreach (var larga in new[] { paredes[0], paredes[3] })
+            foreach (var larga in new[] { frente, fondo })
             {
                 larga.composicionCentral = true;
                 larga.zonasElipse.Add(new Rect((Ancho - anchoElipse) / 2f, 0f, anchoElipse, AltoPantalla));
@@ -410,14 +432,13 @@ namespace CuboPost.EditorTools
 
             // Por ahora las dedicatorias salen solo en la pantalla del frente (la que ve la cámara al
             // abrir). Las demás muestran gráfica y puntos. Para sumar otra, poner true acá.
-            for (int i = 0; i < paredes.Count; i++) paredes[i].recibeNotas = i == 0;
+            foreach (var p in paredes) p.recibeNotas = p == frente;
 
             // Vista previa sin Play, ya con las medidas y las zonas definitivas.
             foreach (var p in paredes) p.VistaPrevia();
 
             // Franja de servicios (lado este, 1,50 m de fondo). De norte a sur: técnico + depósito,
-            // entrada, ropero y salida. Desde afuera se ven dos volúmenes cerrados con pantalla
-            // (técnico y ropero) y dos vanos (entrada y salida).
+            // entrada, ropero y salida. Desde afuera es todo pantalla: solo se ven las dos puertas.
             var franja = new GameObject("Franja de servicios (este)").transform;
             franja.SetParent(cubo, false);
             CajaEntre("Técnico + depósito", franja, xFranja, este - h, 0f, AltoPared, zTecnico, norte - h, matTunel);
@@ -426,8 +447,8 @@ namespace CuboPost.EditorTools
             float xPuerta = (xFranja + este) / 2f;
             CajaEntre("Ropero · puerta a la entrada", franja, xPuerta - PuertaRopero / 2f, xPuerta + PuertaRopero / 2f, 0f, AltoPuertaRopero, zEntrada, zEntrada + 0.02f, matPersonas);
             CajaEntre("Ropero · puerta a la salida", franja, xPuerta - PuertaRopero / 2f, xPuerta + PuertaRopero / 2f, 0f, AltoPuertaRopero, zRopero - 0.02f, zRopero, matPersonas);
-            Acceso("Entrada", franja, xFranja, este, zEntrada, zTecnico, matEstructura, matPuerta);
-            Acceso("Salida", franja, xFranja, este, sur + h, zRopero, matEstructura, matPuerta);
+            Acceso("Entrada", franja, xFranja, este, zEntrada, zTecnico, zPuertaEntrada, matEstructura, matTunel, matPuerta);
+            Acceso("Salida", franja, xFranja, este, sur + h, zRopero, zPuertaSalida, matEstructura, matTunel, matPuerta);
             // La salida da contra la pared sur del stand: su cara de adentro (afuera es pantalla).
             CajaEntre("Salida · pared sur", franja, xFranja, este - h, 0f, AltoAcceso, sur + h, sur + 0.1f, matTunel);
 
@@ -435,7 +456,7 @@ namespace CuboPost.EditorTools
             // hacia el este, donde está la zona de espera.
             var fila = new GameObject("Fila (referencia 1,70 m)").transform;
             fila.SetParent(cubo, false);
-            float zFila = (zEntrada + zTecnico) / 2f;   // centro del vano de entrada
+            float zFila = zPuertaEntrada;   // centro de la puerta de entrada
             for (int i = 0; i < 7; i++)
             {
                 var p = GameObject.CreatePrimitive(PrimitiveType.Capsule);
@@ -450,17 +471,35 @@ namespace CuboPost.EditorTools
         }
 
         /// <summary>
-        /// Vano de entrada o de salida: del ancho de su tramo (de z0 a z1), con el fondo de la franja
-        /// (de x0 a x1) y <see cref="AltoAcceso"/> de alto libre. Arriba, el dintel hasta la altura de
-        /// las pantallas. Al fondo, un cierre oscuro provisorio: se saca cuando se arme el interior.
+        /// Pasillo de entrada o de salida: ocupa su tramo de la franja (de z0 a z1, de x0 a x1) con
+        /// <see cref="AltoAcceso"/> de alto libre, detrás de la pantalla del lado este. Hacia afuera
+        /// da una sola puerta de <see cref="AnchoPuerta"/> × <see cref="AltoPuerta"/>, centrada en
+        /// <paramref name="zPuerta"/>, con su marco. Al fondo, un cierre oscuro provisorio: se saca
+        /// cuando se arme el interior.
         /// </summary>
-        static void Acceso(string nombre, Transform padre, float x0, float x1, float z0, float z1, Material matEstructura, Material matCierre)
+        static void Acceso(string nombre, Transform padre, float x0, float x1, float z0, float z1, float zPuerta,
+            Material matEstructura, Material matPared, Material matCierre)
         {
+            const float espesor = 0.1f;     // pared que sostiene la pantalla
+            const float vuelo = 0.03f;      // cuánto sobresale el marco de la pantalla
+            float p0 = zPuerta - AnchoPuerta / 2f, p1 = zPuerta + AnchoPuerta / 2f;
+            float xPared = x1 - 0.02f;      // un pelo detrás del plano de la pantalla
+
             var acceso = new GameObject(nombre).transform;
             acceso.SetParent(padre, false);
-            CajaEntre("Dintel", acceso, x0, x1, AltoAcceso, AltoPared, z0, z1, matEstructura);
+            CajaEntre("Techo", acceso, x0, xPared, AltoAcceso, AltoPared, z0, z1, matEstructura);
             CajaEntre("Piso", acceso, x0, x1, 0f, 0.02f, z0, z1, matEstructura);
             CajaEntre("Cierre provisorio (interior pendiente)", acceso, x0 - 0.04f, x0 + 0.01f, 0f, AltoAcceso, z0, z1, matCierre);
+            // Pared del frente (la que lleva la pantalla), con el hueco de la puerta.
+            CajaEntre("Pared a un lado de la puerta", acceso, xPared - espesor, xPared, 0f, AltoAcceso, z0, p0 - Marco, matPared);
+            CajaEntre("Pared al otro lado de la puerta", acceso, xPared - espesor, xPared, 0f, AltoAcceso, p1 + Marco, z1, matPared);
+            CajaEntre("Pared sobre la puerta", acceso, xPared - espesor, xPared, AltoPuerta + Marco, AltoAcceso, p0 - Marco, p1 + Marco, matPared);
+            // Marco: dos jambas y el dintel, del espesor de la pared y apenas salidos de la pantalla.
+            var marco = new GameObject("Puerta · marco").transform;
+            marco.SetParent(acceso, false);
+            CajaEntre("Jamba", marco, xPared - espesor, x1 + vuelo, 0f, AltoPuerta + Marco, p0 - Marco, p0, matEstructura);
+            CajaEntre("Jamba", marco, xPared - espesor, x1 + vuelo, 0f, AltoPuerta + Marco, p1, p1 + Marco, matEstructura);
+            CajaEntre("Dintel", marco, xPared - espesor, x1 + vuelo, AltoPuerta, AltoPuerta + Marco, p0, p1, matEstructura);
         }
 
         static void AjustarCamara(CamaraOrbita orbita)
@@ -475,24 +514,54 @@ namespace CuboPost.EditorTools
 
         /// <summary>
         /// Una pantalla LED exterior. <paramref name="heredaDe"/>: si no había una pantalla con este
-        /// nombre, de cuál de las anteriores toma los ajustes (para los tramos nuevos del lado este).
+        /// nombre, de cuál de las anteriores toma los ajustes. <paramref name="vanos"/>: huecos de
+        /// puertas, en metros desde el extremo izquierdo de la pantalla (vista de frente) y desde su
+        /// borde de abajo; arrancan abajo y la pantalla sigue por encima.
         /// </summary>
         static ParedPantalla Pared(string nombre, Transform padre, Vector3 centro, Vector3 haciaAfuera,
             float largo, float inicioPerimetro, float perimetro, Material mat, Dictionary<string, string> previas,
-            string heredaDe = null)
+            string heredaDe = null, List<Rect> vanos = null)
         {
             var go = new GameObject(nombre, typeof(MeshFilter), typeof(MeshRenderer), typeof(ParedPantalla));
             go.transform.SetParent(padre, false);
             // +Z del objeto = hacia adentro del cubo (la dirección en la que mira el público).
             go.transform.SetPositionAndRotation(centro, Quaternion.LookRotation(-haciaAfuera, Vector3.up));
 
+            // La pantalla se arma por columnas: enteras donde no hay puerta y, donde la hay, solo el
+            // paño de arriba. Las UV siguen el perímetro del stand (u) y el alto de la pantalla (v).
             float u0 = inicioPerimetro / perimetro, u1 = (inicioPerimetro + largo) / perimetro;
-            float x = largo / 2f, y = AltoPantalla / 2f;
+            var cortes = new List<float> { 0f, largo };
+            if (vanos != null)
+                foreach (var v in vanos) { cortes.Add(Mathf.Clamp(v.xMin, 0f, largo)); cortes.Add(Mathf.Clamp(v.xMax, 0f, largo)); }
+            cortes.Sort();
+            var vertices = new List<Vector3>();
+            var uvs = new List<Vector2>();
+            var normales = new List<Vector3>();
+            var triangulos = new List<int>();
+            for (int i = 0; i + 1 < cortes.Count; i++)
+            {
+                float a = cortes[i], b = cortes[i + 1];
+                if (b - a < 0.0005f) continue;
+                float medio = (a + b) / 2f, desde = 0f;
+                if (vanos != null)
+                    foreach (var v in vanos)
+                        if (medio > v.xMin && medio < v.xMax) desde = Mathf.Max(desde, v.yMax);
+                if (desde >= AltoPantalla) continue;
+                int k = vertices.Count;
+                foreach (var y in new[] { desde, AltoPantalla })
+                foreach (var x in new[] { a, b })
+                {
+                    vertices.Add(new Vector3(x - largo / 2f, y - AltoPantalla / 2f, 0f));
+                    uvs.Add(new Vector2(Mathf.Lerp(u0, u1, x / largo), y / AltoPantalla));
+                    normales.Add(Vector3.back);
+                }
+                triangulos.AddRange(new[] { k, k + 2, k + 3, k, k + 3, k + 1 });
+            }
             var malla = new Mesh { name = nombre };
-            malla.vertices = new[] { new Vector3(-x, -y, 0), new Vector3(x, -y, 0), new Vector3(-x, y, 0), new Vector3(x, y, 0) };
-            malla.uv = new[] { new Vector2(u0, 0), new Vector2(u1, 0), new Vector2(u0, 1), new Vector2(u1, 1) };
-            malla.normals = new[] { Vector3.back, Vector3.back, Vector3.back, Vector3.back };
-            malla.triangles = new[] { 0, 2, 3, 0, 3, 1 };
+            malla.SetVertices(vertices);
+            malla.SetUVs(0, uvs);
+            malla.SetNormals(normales);
+            malla.SetTriangles(triangulos, 0);
             malla.RecalculateBounds();
             go.GetComponent<MeshFilter>().sharedMesh = Guardar(malla, nombre + ".asset");
 

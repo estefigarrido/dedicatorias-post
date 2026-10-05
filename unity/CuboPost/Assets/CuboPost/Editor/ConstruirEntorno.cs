@@ -136,17 +136,6 @@ namespace CuboPost.EditorTools
             return entorno != null && entorno.Find(Version) != null;
         }
 
-        /// <summary>Piso del área relevada (32 × 15 m en los planos): el rectángulo, recortado contra la explanada.</summary>
-        public static GameObject PisoRelevado(Transform padre, Rect area, Material material, string nombre)
-        {
-            if (explanada == null) Trazar();
-            var poli = RecortarRect(explanada, area);
-            var m = new MallaB();
-            if (poli.Count >= 3) Superficie(m, poli, q => 0.014f, 100f, 1f);
-            var go = m.Crear(nombre, padre, material, false);
-            return go;
-        }
-
         // =====================================================================
         //  Trazados
         // =====================================================================

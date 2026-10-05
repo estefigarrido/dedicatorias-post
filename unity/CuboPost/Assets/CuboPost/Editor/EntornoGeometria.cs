@@ -221,14 +221,6 @@ namespace CuboPost.EditorTools
             return RecortarSemiplano(r, punto + lado * (ancho / 2f), -lado);
         }
 
-        static List<Vector2> RecortarRect(IList<Vector2> poli, Rect r)
-        {
-            var p = RecortarSemiplano(poli, new Vector2(r.xMin, 0f), Vector2.right);
-            p = RecortarSemiplano(p, new Vector2(r.xMax, 0f), -Vector2.right);
-            p = RecortarSemiplano(p, new Vector2(0f, r.yMin), Vector2.up);
-            return RecortarSemiplano(p, new Vector2(0f, r.yMax), -Vector2.up);
-        }
-
         static bool EnTriangulo(Vector2 q, Vector2 a, Vector2 b, Vector2 c)
         {
             float d1 = (b.x - a.x) * (q.y - a.y) - (b.y - a.y) * (q.x - a.x);
