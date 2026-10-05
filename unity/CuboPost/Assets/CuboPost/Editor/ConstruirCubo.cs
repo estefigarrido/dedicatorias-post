@@ -65,6 +65,12 @@ namespace CuboPost.EditorTools
         const float PuertaRopero = 0.5f, AltoPuertaRopero = 2.05f;
         // Vista general de la cámara.
         const float DistanciaCamara = 32f;
+        // Ancho de la nota más chica (S) en las pantallas; las demás crecen en la misma proporción.
+        // Eran 0,70 m: con las pantallas más altas, Estefi pidió todas las notas un 20 % más grandes.
+        const float AnchoNotaS = 0.70f * 1.2f;
+        // Ejercicio de respiración (Figma, página "tareas"): la zona roja, a la derecha de la puerta
+        // de entrada, separada del marco y desde el borde de abajo de la pantalla.
+        const float AnchoRespiracion = 2f, AltoRespiracion = 2.3f, SeparacionRespiracion = 0.3f;
 
         // Visitante: la persona con la que se recorre la escena en Play (W A S D). Mide 1,75 m y
         // tiene los ojos unos 12 cm por debajo de la coronilla, como una persona de esa altura.
@@ -98,10 +104,12 @@ namespace CuboPost.EditorTools
         /// r6: 2 m más de altura (pantalla hasta 5,50 m, 6 m en total).
         /// r7: el lado este es una sola pantalla corrida con dos puertas de 0,90 m (entrada y salida).
         /// r8: visitante de 1,75 m para recorrer la escena con W A S D, fila con figuras y colisiones.
+        /// r9: ejercicio de respiración junto a la entrada (tecla E) y notas un 20 % más grandes.
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} r8",
-            Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante);
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13}x{14} r9",
+            Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
+            AnchoNotaS, AnchoRespiracion, AltoRespiracion);
 
         // Mallas de las pantallas que ya no existen (el lado este tenía dos tramos): se borran al actualizar.
         static readonly string[] MallasViejas = { "Pantalla derecha (ropero).asset", "Pantalla derecha (técnico).asset" };
@@ -238,6 +246,16 @@ namespace CuboPost.EditorTools
             EditorSceneManager.SaveScene(escena);
             AssetDatabase.SaveAssets();
             Debug.Log("[post.] Cubo actualizado: " + Firma);
+        }
+
+        /// <summary>
+        /// Lo mismo que "Actualizar solo el cubo", pero desde la consola, con Unity cerrado:
+        /// Unity.exe -batchmode -projectPath unity/CuboPost -executeMethod CuboPost.EditorTools.ConstruirCubo.ActualizarCuboDesdeConsola -quit
+        /// </summary>
+        public static void ActualizarCuboDesdeConsola()
+        {
+            EditorSceneManager.OpenScene(RutaEscena, OpenSceneMode.Single);
+            ActualizarCubo();
         }
 
         /// <summary>Corre solo al recompilar: si el cubo de la escena abierta quedó viejo, lo actualiza.</summary>
@@ -453,6 +471,18 @@ namespace CuboPost.EditorTools
             // Ni puntos ni notas sobre las puertas (con un margen alrededor del marco).
             foreach (var v in vanos)
                 derecha.zonasBloqueadas.Add(new Rect(v.x - 0.1f, 0f, v.width + 0.2f, v.height + 0.1f));
+            // Ejercicio de respiración para la fila: a la derecha de la puerta de entrada (vista de
+            // frente). Su zona también queda bloqueada, así los puntos que flotan no la cruzan.
+            var zonaRespiracion = new Rect(zPuertaEntrada - sur + medioVano + SeparacionRespiracion, 0f, AnchoRespiracion, AltoRespiracion);
+            derecha.zonasBloqueadas.Add(new Rect(zonaRespiracion.x - 0.1f, 0f, zonaRespiracion.width + 0.2f, zonaRespiracion.height + 0.1f));
+            var respiracion = new GameObject("Ejercicio de respiración (tecla E)").AddComponent<EjercicioRespiracion>();
+            respiracion.transform.SetParent(derecha.transform, false);
+            respiracion.zona = zonaRespiracion;
+            respiracion.largoPantalla = derecha.largo;
+            respiracion.altoPantalla = derecha.alto;
+            respiracion.Armar();
+            // Notas un 20 % más grandes que antes en todas las pantallas (la S manda, las demás siguen).
+            foreach (var p in paredes) p.anchoMinimoNota = AnchoNotaS;
 
             // Paredes largas (frente y fondo): gráfica post. centrada, como en el frame del Figma
             // (1622:4941). El alto del frame es el alto de la pantalla, y la elipse roja del frame

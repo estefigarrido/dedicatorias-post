@@ -44,7 +44,7 @@ Devuelve una lista de notas nuevas (solo las visibles):
 - Consultar cada 1–2 s pasando el último `id` mostrado.
 - `tamano` es S / M / L (tarjetita1–3 del Figma): S ≤ 40 caracteres, M ≤ 120, L hasta el máximo de 150. XL solo aparece en notas viejas de más de 170.
 - `color` puede ser azul, verde, violeta, rosa o crema (#ede8db).
-- En Unity cada nota aparece en 1 s (opacidad 0 → 100 %), queda 15 s y desaparece en 1 s. Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas. La más chica mide 70 cm de ancho.
+- En Unity cada nota aparece en 1 s (opacidad 0 → 100 %), queda 15 s y desaparece en 1 s. Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas. La más chica mide 84 cm de ancho (eran 70 cm: con las pantallas más altas todas crecieron un 20 %).
   Ancho fijo por tamaño (619 / 956 / 1044 / 1299), alto según el texto.
 - Para detectar notas moderadas: `GET …/rest/v1/notas?select=id` devuelve los ids que siguen visibles.
 
@@ -70,6 +70,11 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   en `ConstruirCubo.cs`). Se leen de Supabase cada 2 s. Cada una aparece en 1 s, queda 15 s y se va en 1 s.
   Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas (o las de ejemplo si no hay
   ninguna). Las moderadas (`visible = false`) desaparecen solas.
+- **Ejercicio de respiración** (para la fila): en la pantalla del lado este, a la derecha de la puerta de entrada
+  (2 × 2,3 m, la zona roja del Figma; los puntos no la cruzan). Con **E** arranca (y con E se corta): 5 s de inhalar
+  y 5 s de exhalar, 6 veces. Al inhalar aparece un anillo más grande detrás de la carita cada segundo y al exhalar
+  se va uno por segundo; la carita cambia entre inhalando y exhalando. Código: `Scripts/EjercicioRespiracion.cs`,
+  caritas en `Resources/Respiracion`.
 - **Cámara**: arrastrar para girar · rueda para acercar · 1-4 cada pared a la altura de la fila · 0 vista general · R giro automático.
 - **Reconstruir la escena** (si se cambian medidas en el código): menú **post. → Construir escena del cubo**.
 
