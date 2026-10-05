@@ -28,7 +28,7 @@ namespace CuboPost.EditorTools
     /// </summary>
     public static class ConstruirVelas
     {
-        const string Version = "Velas v2";   // subir si cambia la disposición
+        const string Version = "Velas v3";   // subir si cambia la disposición
         const string NombreRaiz = "Velas de sombra";
         const string RutaEscena = "Assets/Scenes/CuboPost.unity";
         const string Carpeta = "Assets/CuboPost/Generado/Velas";
