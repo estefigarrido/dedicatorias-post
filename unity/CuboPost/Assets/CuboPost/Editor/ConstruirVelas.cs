@@ -28,7 +28,7 @@ namespace CuboPost.EditorTools
     /// </summary>
     public static class ConstruirVelas
     {
-        const string Version = "Velas v3";   // subir si cambia la disposición
+        const string Version = "Velas v5";   // subir si cambia la disposición
         const string NombreRaiz = "Velas de sombra";
         const string RutaEscena = "Assets/Scenes/CuboPost.unity";
         const string Carpeta = "Assets/CuboPost/Generado/Velas";
@@ -46,7 +46,7 @@ namespace CuboPost.EditorTools
         // cercanos y los toma con un brazo (reemplaza a un palo de soporte).
         static readonly (float x, float z, bool sostiene)[] Cargadores =
         {
-            (7.88f, 13.14f, true), (15.94f, 7.45f, true), (18.21f, -2.96f, true), (9.57f, 6.99f, false),
+            (7.88f, 13.14f, true), (15.94f, 7.45f, true), (18.21f, -2.96f, true), (9.57f, 6.99f, true),
         };
         // Palos comunes (además de los cargadores) por grupo. Solo van en el borde, fuera de la explanada.
         const int PalosPorGrupo = 3;
@@ -57,13 +57,89 @@ namespace CuboPost.EditorTools
         const float MargenTela = 0.12f, CadaTensor = 0.3f, Comba = 0.12f;
         const float OpacidadTela = 0.72f;
 
-        // Los palos comunes (con su base de hormigón) solo van fuera de la explanada por donde circula
-        // la gente: en el borde este, contra el pasto, o en el pasto del lado norte.
-        const float BordeEste = 17.3f, BordeNorte = 11.0f;
-        // También contra la pared ciega del ropero (entre las dos puertas): la base queda como banco
-        // pegado a la pared, lejos de la fila y del paso de la salida.
+        // Los palos comunes van solo sobre el pasto: nunca en la explanada ni sobre el murete negro.
+        // Se mira el piso real de la escena con rayos. Con lugar, la base va dentro de un puf de tela
+        // outdoor (Ø 1,5 m); si el pasto es angosto, dentro de una "mesita inflada" (Ø 0,8 m).
+        const float RadioPuf = 0.8f, RadioMesita = 0.45f;
+        static readonly string[] Pasto = { "Césped", "Pasto" };
+        // Si el aro no pasa por arriba del pasto, el palo se corre hacia el pasto (hasta 1,5 m) y lo toma con un brazo.
+        static readonly float[] Corrimientos = { 0f, 0.4f, 0.8f, 1.2f, 1.5f };
+
+        static Transform raizActual;
+
+        // Contra la pared ciega del ropero (entre las dos puertas) también puede ir un palo: su base
+        // es un banco acolchado largo, para dos personas, pegado a la pared.
         static readonly Rect ContraElRopero = Rect.MinMaxRect(11.2f, -2.6f, 12.2f, 0f);
-        static bool FueraDeLaCirculacion(Vector2 p) => p.x >= BordeEste || p.y >= BordeNorte || ContraElRopero.Contains(p);
+        // Donde no van beanbags sueltos: el stand, la fila, el paso de las puertas y la pantalla de respiración.
+        static readonly Rect[] Paso =
+        {
+            Rect.MinMaxRect(-11.5f, -7f, 11.5f, 7f),
+            Rect.MinMaxRect(10.75f, 0.6f, 17.6f, 2.8f),
+            Rect.MinMaxRect(10.75f, 2.4f, 13f, 4.9f),
+            Rect.MinMaxRect(10.75f, -5.6f, 13.5f, -3.5f),
+        };
+        static readonly List<Vector3> ocupados = new List<Vector3>();   // x, z, radio
+
+        static bool EsMurete(string nombre) => nombre.StartsWith("Murete", System.StringComparison.Ordinal);
+
+        /// <summary>¿El círculo es piso parejo, sin murete en el medio? (para cargadores y beanbags)</summary>
+        static bool Libre(Vector2 p, float r)
+        {
+            var c = Piso(p);
+            if (c == null || EsMurete(c.Value.nombre)) return false;
+            for (int k = 0; k < 12; k++)
+            {
+                float t = k * Mathf.PI / 6f;
+                var s = Piso(p + new Vector2(Mathf.Cos(t), Mathf.Sin(t)) * r);
+                if (s == null || EsMurete(s.Value.nombre) || Mathf.Abs(s.Value.y - c.Value.y) > 0.12f) return false;
+            }
+            return !ocupados.Any(o => Vector2.Distance(new Vector2(o.x, o.y), p) < o.z + r);
+        }
+
+        /// <summary>Qué hay en el piso en (x, z): el objeto más alto y su altura (sin contar las velas).</summary>
+        static (string nombre, float y)? Piso(Vector2 p)
+        {
+            var golpes = Physics.RaycastAll(new Vector3(p.x, 60f, p.y), Vector3.down, 120f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore);
+            RaycastHit? mejor = null;
+            foreach (var g in golpes)
+            {
+                if (raizActual != null && g.collider.transform.IsChildOf(raizActual)) continue;
+                if (mejor == null || g.point.y > mejor.Value.point.y) mejor = g;
+            }
+            if (mejor == null) return null;
+            return (mejor.Value.collider.name, mejor.Value.point.y);
+        }
+
+        static bool EsPasto(Vector2 p)
+        {
+            var s = Piso(p);
+            return s != null && Pasto.Any(n => s.Value.nombre.StartsWith(n, System.StringComparison.Ordinal));
+        }
+
+        /// <summary>¿Hay pasto en todo el círculo de radio r alrededor de p? (así la base no pisa el murete)</summary>
+        static bool PastoAlrededor(Vector2 p, float r)
+        {
+            if (!EsPasto(p)) return false;
+            for (int k = 0; k < 12; k++)
+            {
+                float t = k * Mathf.PI / 6f;
+                if (!EsPasto(p + new Vector2(Mathf.Cos(t), Mathf.Sin(t)) * r)) return false;
+            }
+            return true;
+        }
+
+        /// <summary>La altura más baja del piso en el círculo: así la base apoya entera, sin quedar en el aire.</summary>
+        static float AlturaPiso(Vector2 p, float r)
+        {
+            float y = Piso(p)?.y ?? 0f;
+            for (int k = 0; k < 8; k++)
+            {
+                float t = k * Mathf.PI / 4f;
+                var s = Piso(p + new Vector2(Mathf.Cos(t), Mathf.Sin(t)) * r);
+                if (s != null) y = Mathf.Min(y, s.Value.y);
+            }
+            return y;
+        }
 
         static Mesh cilindro;
 
@@ -102,28 +178,39 @@ namespace CuboPost.EditorTools
         {
             if (!AssetDatabase.IsValidFolder(Carpeta)) AssetDatabase.CreateFolder("Assets/CuboPost/Generado", "Velas");
             cilindro = Guardar(MallaCilindro(16), "Caño.asset");
+            fundas = 0;
             var matCano = Lit("Caño aluminio blanco", "#c8cbcc", 0.45f, 0.35f);
-            var matBase = Lit("Base banco", "#b4b7b8", 0.2f, 0f);
             var matGoma = Lit("Goma de la base", "#262626", 0.1f, 0f);
             var matTela = Tela();
+            var matPuf = TelaOutdoor();
+            Physics.SyncTransforms();
 
             var raiz = new GameObject(NombreRaiz).transform;
+            raizActual = raiz;
             new GameObject(Version).transform.SetParent(raiz, false);
             var informe = new List<string>();
-            var matAcero = Lit("Placas de contrapeso", "#5d6062", 0.3f, 0.5f);
 
             // Postes de carga: los que sostienen toman los aros que tienen a menos de 80 cm.
             var postes = new GameObject("Postes de carga").transform;
             postes.SetParent(raiz, false);
             var deCargadores = new List<Apoyo>();
+            var matSolar = Lit("Panel solar", "#1c2433", 0.75f, 0.2f);
+            ocupados.Clear();
             foreach (var c in Cargadores)
             {
-                var ap = new Apoyo { p = new Vector2(c.x, c.z) };
+                var original = new Vector2(c.x, c.z);
+                var ap = new Apoyo { p = original };
+                // Toma los aros que pasan a menos de 80 cm del lugar del plano.
                 if (c.sostiene)
                     for (int i = 0; i < Velas.Length; i++)
-                        if (Mathf.Abs(Vector2.Distance(ap.p, Centro(i)) - Radio(i)) < 0.8f) ap.velas.Add(i);
+                        if (Mathf.Abs(Vector2.Distance(original, Centro(i)) - Radio(i)) < 0.8f) ap.velas.Add(i);
                 ap.alto = ap.velas.Count > 0 ? ap.velas.Max(i => Velas[i].h) : 0f;
-                Cargador(postes, ap, matCano, matAcero, matGoma);
+                // Si la funda choca con el murete, el cargador se corre lo mínimo hacia un piso parejo,
+                // sin meterse debajo de ninguna vela (el poste las pasa por al lado).
+                ap.p = LugarLibre(original, 0.7f, 2.5f) ?? original;
+                ap.suelo = AlturaPiso(ap.p, 0.6f);
+                ocupados.Add(new Vector3(ap.p.x, ap.p.y, 0.7f));
+                Cargador(postes, ap, matCano, matPuf, matGoma, matSolar);
                 deCargadores.Add(ap);
             }
 
@@ -135,19 +222,60 @@ namespace CuboPost.EditorTools
 
                 foreach (int i in indices) Vela(grupo, i, matCano, matTela);
                 var palos = ElegirPalos(indices, deCargadores);
-                foreach (var p in palos) Palo(grupo, p, matCano, matBase, matGoma);
+                foreach (var p in palos)
+                {
+                    Palo(grupo, p, matCano, matPuf);
+                    ocupados.Add(new Vector3(p.p.x, p.p.y, p.banco ? 0.9f : p.mesita ? 0.45f : 0.8f));
+                }
                 Uniones(grupo, indices, palos.Concat(deCargadores).ToList(), matCano);
 
                 var apoyos = indices.ToDictionary(i => i, i => palos.Concat(deCargadores).Count(p => p.velas.Contains(i)));
                 informe.Add($"{grupo.name}: {palos.Count} palos + cargadores; apoyos por vela: {string.Join(", ", apoyos.Values)}");
             }
+            // Zonas de estar: dos beanbags junto a cada cargador, mirando a la mesa de carga.
+            var estar = new GameObject("Beanbags (zonas de estar)").transform;
+            estar.SetParent(raiz, false);
+            int beanbags = 0;
+            foreach (var ap in deCargadores)
+            {
+                var puestos = new List<Vector2>();
+                for (int n = 0; n < 2; n++)
+                {
+                    Vector2? mejor = null;
+                    float puntaje = float.MinValue;
+                    for (int k = 0; k < 24; k++)
+                    foreach (var d in new[] { 1.4f, 1.8f })
+                    {
+                        float t = k * Mathf.PI / 12f;
+                        var q = ap.p + new Vector2(Mathf.Cos(t), Mathf.Sin(t)) * d;
+                        if (Paso.Any(r => r.Contains(q)) || !Libre(q, 0.6f)) continue;
+                        float s = -d + (puestos.Count > 0 ? Mathf.Min(Vector2.Distance(q, puestos[0]), 2f) : 0f);
+                        if (s > puntaje) { puntaje = s; mejor = q; }
+                    }
+                    if (mejor == null) break;
+                    puestos.Add(mejor.Value);
+                    ocupados.Add(new Vector3(mejor.Value.x, mejor.Value.y, 0.65f));
+                    Beanbag(estar, mejor.Value, ap.p, matPuf);
+                    beanbags++;
+                }
+            }
+            informe.Add($"{beanbags} beanbags");
             Debug.Log("[post.] Velas de sombra armadas. " + string.Join(" · ", informe));
             return raiz.gameObject;
         }
 
         // ---------------- palos ----------------
 
-        class Apoyo { public Vector2 p; public List<int> velas = new List<int>(); public float alto; }
+        class Apoyo
+        {
+            public Vector2 p;
+            public List<int> velas = new List<int>();
+            public float alto;
+            public float suelo;      // altura del piso donde apoya
+            public bool mesita;      // poco lugar: mesita inflada en vez de puf
+            public float brazo;      // distancia del palo al aro (0 = el palo toca el aro)
+            public bool banco;       // contra la pared del ropero: banco acolchado para dos
+        }
 
         static Vector2 Centro(int i) => new Vector2(Velas[i].x, Velas[i].z);
         static float Radio(int i) => Velas[i].d / 2f;
@@ -170,7 +298,6 @@ namespace CuboPost.EditorTools
 
         static bool Valido(Apoyo a)
         {
-            if (!FueraDeLaCirculacion(a.p)) return false;
             if (Cargadores.Any(c => Vector2.Distance(new Vector2(c.x, c.z), a.p) < 2f)) return false;
             // El palo no puede atravesar la tela de una vela más baja que no sostiene.
             for (int i = 0; i < Velas.Length; i++)
@@ -178,6 +305,17 @@ namespace CuboPost.EditorTools
                 if (a.velas.Contains(i) || Velas[i].h >= a.alto - 0.01f) continue;
                 if (Vector2.Distance(a.p, Centro(i)) < Radio(i) + 0.15f) return false;
             }
+            if (ContraElRopero.Contains(a.p))
+            {
+                a.banco = true;
+                a.suelo = AlturaPiso(a.p, 0.5f);
+                return true;
+            }
+            // Solo sobre pasto, con la base entera adentro del pasto (sin tocar el murete).
+            if (PastoAlrededor(a.p, RadioPuf)) a.mesita = false;
+            else if (PastoAlrededor(a.p, RadioMesita)) a.mesita = true;
+            else return false;
+            a.suelo = AlturaPiso(a.p, a.mesita ? RadioMesita : RadioPuf);
             return true;
         }
 
@@ -196,13 +334,12 @@ namespace CuboPost.EditorTools
                     candidatos.Add(new Apoyo { p = p, velas = { a, b }, alto = Mathf.Max(Velas[a].h, Velas[b].h) });
             }
             foreach (int a in indices)
-                for (int k = 0; k < 144; k++)
+                for (int k = 0; k < 72; k++)
                 {
-                    float ang = k * Mathf.PI * 2f / 144f;   // cada 2,5°: la franja contra el ropero es angosta
-                    var p = Centro(a) + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * Radio(a);
-                    // Si el punto del aro cae justo sobre otro aro, también lo sostiene.
-                    var ap = new Apoyo { p = p, velas = { a }, alto = Velas[a].h };
-                    candidatos.Add(ap);
+                    float ang = k * Mathf.PI * 2f / 72f;
+                    var dir = new Vector2(Mathf.Cos(ang), Mathf.Sin(ang));
+                    foreach (var corrido in Corrimientos)
+                        candidatos.Add(new Apoyo { p = Centro(a) + dir * (Radio(a) + corrido), velas = { a }, alto = Velas[a].h, brazo = corrido });
                 }
             candidatos = candidatos.Where(Valido).ToList();
 
@@ -217,7 +354,8 @@ namespace CuboPost.EditorTools
                     float cerca = elegidos.Count == 0 ? 6f : elegidos.Min(e => Vector2.Distance(e.p, c.p));
                     if (cerca < 2f) continue;
                     float falta = c.velas.Sum(v => Mathf.Max(0, 2 - apoyos[v]));
-                    float s = falta * 10f + Mathf.Min(cerca, 6f) + (c.velas.Count - 1) * 3f;
+                    // Mejor sin brazo y con puf (más estable); los cruces sostienen dos velas.
+                    float s = falta * 10f + Mathf.Min(cerca, 6f) + (c.velas.Count - 1) * 3f - c.brazo * 2f - (c.mesita ? 1f : 0f);
                     if (s > puntaje) { puntaje = s; mejor = c; }
                 }
                 if (mejor == null) break;
@@ -229,34 +367,47 @@ namespace CuboPost.EditorTools
             return elegidos;
         }
 
-        static void Palo(Transform padre, Apoyo a, Material cano, Material matBase, Material goma)
+        static void Palo(Transform padre, Apoyo a, Material cano, Material puf)
         {
-            var palo = new GameObject("Palo").transform;
+            var palo = new GameObject(a.mesita ? "Palo (mesita inflada)" : "Palo (puf)").transform;
             palo.SetParent(padre, false);
-            palo.position = new Vector3(a.p.x, 0f, a.p.y);
+            var pie = new Vector3(a.p.x, a.suelo, a.p.y);
+            palo.position = pie;
 
-            // Base con contrapeso: bloques de hormigón forrados (banco de 45 cm), goma abajo.
-            var g = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            g.name = "Base · goma";
-            g.transform.SetParent(palo, false);
-            g.transform.localPosition = new Vector3(0f, 0.015f, 0f);
-            g.transform.localScale = new Vector3(LadoBase + 0.02f, 0.03f, LadoBase + 0.02f);
-            g.GetComponent<Renderer>().sharedMaterial = goma;
-            Object.DestroyImmediate(g.GetComponent<Collider>());
-            var b = GameObject.CreatePrimitive(PrimitiveType.Cube);
-            b.name = "Base · bloques de hormigón forrados (banco)";
-            b.transform.SetParent(palo, false);
-            b.transform.localPosition = new Vector3(0f, 0.03f + (AltoBase - 0.03f) / 2f, 0f);
-            b.transform.localScale = new Vector3(LadoBase, AltoBase - 0.03f, LadoBase);
-            b.GetComponent<Renderer>().sharedMaterial = matBase;
+            // Contrapeso (bloques de hormigón o placas de acero) tapado por una funda de tela outdoor
+            // para que nadie se golpee: un puf donde hay lugar, una mesita inflada donde no.
+            if (a.banco)
+            {
+                // Banco para dos, a lo largo de la pared (norte-sur): 1,0 × 1,7 m, 45 cm de alto.
+                var banco = Funda("Banco acolchado para dos (bloques de hormigón adentro)", palo, pie, MallaFunda(0.08f, 0.75f, 0.45f, 3.2f, false), puf, 0.75f, 0.45f);
+                banco.transform.localScale = new Vector3(0.65f, 1f, 1.15f);
+            }
+            else if (a.mesita)
+                Funda("Mesita inflada (contrapeso de acero adentro)", palo, pie, MallaFunda(0.08f, 0.4f, 0.5f, 3.5f, true), puf, 0.4f, 0.5f);
+            else
+                Funda("Puf (bloques de hormigón adentro)", palo, pie, MallaFunda(0.08f, 0.75f, 0.55f, 2.6f, false), puf, 0.75f, 0.55f);
 
             var arriba = a.alto + RadioAro;
-            var fuste = Tubo("Palo Ø100", palo, new Vector3(a.p.x, AltoBase, a.p.y), new Vector3(a.p.x, arriba, a.p.y), RadioPalo, cano);
+            var fuste = Tubo("Palo Ø100", palo, pie + Vector3.up * 0.3f, new Vector3(a.p.x, arriba, a.p.y), RadioPalo, cano);
             var choque = fuste.AddComponent<CapsuleCollider>();
             choque.direction = 1;
             choque.radius = 1f;
             choque.height = 1f;
             choque.center = new Vector3(0f, 0.5f, 0f);
+
+            // Si el palo quedó corrido hacia el pasto, toma el aro con un brazo horizontal.
+            if (a.brazo > 0.05f)
+            {
+                int v = a.velas[0];
+                var c = Centro(v);
+                float h = Velas[v].h;
+                var dir = (a.p - c).normalized;
+                var enAro = new Vector3(c.x + dir.x * Radio(v), h, c.y + dir.y * Radio(v));
+                var enPalo = new Vector3(a.p.x, h, a.p.y);
+                Tubo($"Brazo a la vela {v + 1}", palo, enPalo, enAro, RadioUnion, cano);
+                Tubo("Tornapunta", palo, enPalo + Vector3.down * LargoTornapunta, Vector3.Lerp(enPalo, enAro, 0.7f), RadioTornapunta, cano);
+                return;
+            }
 
             // Tornapuntas: del palo al aro, 90 cm a cada lado (o una por aro si sostiene dos).
             foreach (int v in a.velas)
@@ -279,17 +430,20 @@ namespace CuboPost.EditorTools
         /// los aros y los toma con un brazo horizontal y una tornapunta. Apoya en un disco bajo de
         /// placas de acero (Ø 1,2 m, 12 cm, ~1000 kg) que no molesta a la circulación.
         /// </summary>
-        static void Cargador(Transform padre, Apoyo a, Material cano, Material acero, Material oscuro)
+        static void Cargador(Transform padre, Apoyo a, Material cano, Material puf, Material oscuro, Material solar)
         {
             var poste = new GameObject(a.velas.Count > 0 ? "Poste de carga (sostiene las velas)" : "Poste de carga").transform;
             poste.SetParent(padre, false);
-            var p = new Vector3(a.p.x, 0f, a.p.y);
+            var p = new Vector3(a.p.x, a.suelo, a.p.y);
             poste.position = p;
 
-            Tubo("Contrapeso · placas de acero Ø1,2", poste, p, p + Vector3.up * 0.10f, 0.6f, acero);
-            Tubo("Contrapeso · bisel", poste, p + Vector3.up * 0.10f, p + Vector3.up * 0.12f, 0.56f, acero);
+            // Contrapeso de placas de acero (Ø 1,2 m, 12 cm) tapado por una funda baja acolchada,
+            // del mismo material que los pufs: no se ve el metal y no lastima a nadie.
+            Funda("Funda acolchada (placas de acero adentro)", poste, p, MallaFunda(0.13f, 0.66f, 0.2f, 2.2f, true), puf, 0.66f, 0.2f);
 
-            float arriba = a.velas.Count > 0 ? a.alto + RadioAro : 2.6f;
+            // El poste sube por encima de todas las velas: arriba va el panel solar, al sol.
+            float techo = Velas.Max(v => v.h);
+            float arriba = techo + 0.45f - a.suelo;   // medido desde el piso donde apoya
             var fuste = GameObject.CreatePrimitive(PrimitiveType.Cube);
             fuste.name = "Poste 20 × 20";
             fuste.transform.SetParent(poste, false);
@@ -297,29 +451,24 @@ namespace CuboPost.EditorTools
             fuste.transform.localScale = new Vector3(0.2f, arriba - 0.12f, 0.2f);
             fuste.GetComponent<Renderer>().sharedMaterial = cano;
 
-            // Mesa redonda para apoyar el teléfono, con la caja de los puertos USB.
-            Tubo("Mesa Ø80", poste, p + Vector3.up * 1.0f, p + Vector3.up * 1.03f, 0.4f, cano);
+            var panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            panel.name = "Panel solar (sobre las velas)";
+            panel.transform.SetParent(poste, false);
+            panel.transform.localPosition = new Vector3(0f, arriba + 0.06f, 0f);
+            panel.transform.localRotation = Quaternion.Euler(20f, 0f, 0f);   // inclinado hacia el norte (el sol en Buenos Aires)
+            panel.transform.localScale = new Vector3(1.2f, 0.04f, 0.8f);
+            panel.GetComponent<Renderer>().sharedMaterial = solar;
+            Object.DestroyImmediate(panel.GetComponent<Collider>());
+
+            // Estación de carga abajo, cerca del piso: mesa redonda y caja de puertos USB.
+            Tubo("Mesa Ø80", poste, p + Vector3.up * 0.8f, p + Vector3.up * 0.83f, 0.4f, cano);
             var caja = GameObject.CreatePrimitive(PrimitiveType.Cube);
             caja.name = "Puertos USB";
             caja.transform.SetParent(poste, false);
-            caja.transform.localPosition = new Vector3(0f, 1.1f, 0f);
+            caja.transform.localPosition = new Vector3(0f, 0.9f, 0f);
             caja.transform.localScale = new Vector3(0.26f, 0.14f, 0.26f);
             caja.GetComponent<Renderer>().sharedMaterial = oscuro;
             Object.DestroyImmediate(caja.GetComponent<Collider>());
-
-            if (a.velas.Count == 0)
-            {
-                // Suelto: panel solar arriba, como el de la referencia.
-                var panel = GameObject.CreatePrimitive(PrimitiveType.Cube);
-                panel.name = "Panel solar";
-                panel.transform.SetParent(poste, false);
-                panel.transform.localPosition = new Vector3(0f, arriba + 0.05f, 0f);
-                panel.transform.localRotation = Quaternion.Euler(20f, 0f, 0f);
-                panel.transform.localScale = new Vector3(0.9f, 0.04f, 0.6f);
-                panel.GetComponent<Renderer>().sharedMaterial = oscuro;
-                Object.DestroyImmediate(panel.GetComponent<Collider>());
-                return;
-            }
             // Brazos a cada aro, a la altura del aro, con su tornapunta.
             foreach (int v in a.velas)
             {
@@ -381,6 +530,123 @@ namespace CuboPost.EditorTools
             var tensores = new Mesh { name = $"Tensores {i + 1}" };
             tensores.CombineMeshes(partes.ToArray(), true, true);
             Nuevo("Tensores", go.transform, Guardar(tensores, $"Tensores {i + 1}.asset"), cano);
+        }
+
+        /// <summary>El lugar libre más cercano (círculo de radio r, piso parejo, fuera de las velas), hasta "hasta" metros.</summary>
+        static Vector2? LugarLibre(Vector2 desde, float r, float hasta)
+        {
+            bool BajoVela(Vector2 q) => Enumerable.Range(0, Velas.Length).Any(i => Vector2.Distance(q, Centro(i)) < Radio(i) + 0.15f);
+            if (Libre(desde, r) && !BajoVela(desde)) return desde;
+            for (float d = 0.2f; d <= hasta; d += 0.2f)
+                for (int k = 0; k < 24; k++)
+                {
+                    float t = k * Mathf.PI / 12f;
+                    var q = desde + new Vector2(Mathf.Cos(t), Mathf.Sin(t)) * d;
+                    if (Libre(q, r) && !BajoVela(q)) return q;
+                }
+            return null;
+        }
+
+        /// <summary>Beanbag outdoor (como los de la referencia): asiento bajo y respaldo, mirando hacia "mira".</summary>
+        static void Beanbag(Transform padre, Vector2 p, Vector2 mira, Material mat)
+        {
+            var pie = new Vector3(p.x, AlturaPiso(p, 0.55f), p.y);
+            var bb = new GameObject("Beanbag").transform;
+            bb.SetParent(padre, false);
+            bb.position = pie;
+            var hacia = mira - p;
+            bb.rotation = Quaternion.LookRotation(new Vector3(hacia.x, 0f, hacia.y));
+            var asiento = Funda("Asiento", bb, pie, MallaFunda(0f, 0.55f, 0.38f, 2.4f, false), mat, 0.55f, 0.38f);
+            asiento.transform.localPosition = new Vector3(0f, 0f, 0.08f);
+            var respaldo = Funda("Respaldo", bb, pie, MallaFunda(0f, 0.48f, 0.82f, 2.2f, false), mat, 0.48f, 0.82f);
+            respaldo.transform.localPosition = new Vector3(0f, 0f, -0.3f);
+            respaldo.transform.localRotation = Quaternion.Euler(-12f, 0f, 0f);
+            respaldo.transform.localScale = new Vector3(1.05f, 1f, 0.6f);
+        }
+
+        // ---------------- fundas de tela outdoor ----------------
+
+        static int fundas;
+
+        static GameObject Funda(string nombre, Transform padre, Vector3 pie, Mesh malla, Material mat, float radio, float alto)
+        {
+            var go = Nuevo(nombre, padre, Guardar(malla, $"Funda {++fundas}.asset"), mat);
+            go.transform.position = pie;
+            var caja = go.AddComponent<BoxCollider>();   // se puede sentar, apoyar o saltar encima
+            caja.center = new Vector3(0f, alto / 2f, 0f);
+            caja.size = new Vector3(radio * 1.6f, alto, radio * 1.6f);
+            return go;
+        }
+
+        /// <summary>
+        /// Funda inflada, de revolución, con perfil de superelipse (n más alto = más "cuadrada").
+        /// anillo = false: puf redondeado (el palo sale por arriba). anillo = true: rosca con un hueco
+        /// de radio ri para el palo y tapa casi plana (mesita inflada o funda baja del contrapeso).
+        /// </summary>
+        static Mesh MallaFunda(float ri, float ro, float alto, float n, bool anillo)
+        {
+            const int sectores = 48;
+            var perfil = new List<Vector2>();
+            float Pot(float v) => Mathf.Sign(v) * Mathf.Pow(Mathf.Abs(v), 2f / n);
+            if (!anillo)
+                for (int k = 0; k <= 32; k++)
+                {
+                    float f = -Mathf.PI / 2f + Mathf.PI * k / 32f;
+                    perfil.Add(new Vector2(ro * Mathf.Abs(Pot(Mathf.Cos(f))), alto / 2f + alto / 2f * Pot(Mathf.Sin(f))));
+                }
+            else
+            {
+                float rc = (ri + ro) / 2f, a = (ro - ri) / 2f;
+                for (int k = 0; k <= 48; k++)
+                {
+                    float f = -Mathf.PI / 2f + 2f * Mathf.PI * k / 48f;
+                    perfil.Add(new Vector2(rc + a * Pot(Mathf.Cos(f)), alto / 2f + alto / 2f * Pot(Mathf.Sin(f))));
+                }
+            }
+            int K = perfil.Count;
+            var v = new List<Vector3>(); var uv = new List<Vector2>(); var tri = new List<int>();
+            for (int i = 0; i <= sectores; i++)
+            {
+                float t = i * Mathf.PI * 2f / sectores;
+                for (int k = 0; k < K; k++)
+                {
+                    v.Add(new Vector3(perfil[k].x * Mathf.Cos(t), perfil[k].y, perfil[k].x * Mathf.Sin(t)));
+                    uv.Add(new Vector2((float)i / sectores * 6f, (float)k / (K - 1) * 2f));
+                }
+            }
+            for (int i = 0; i < sectores; i++)
+            for (int k = 0; k < K - 1; k++)
+            {
+                int a0 = i * K + k, b0 = a0 + 1, a1 = a0 + K, b1 = a1 + 1;
+                tri.AddRange(new[] { a0, b0, a1, b0, b1, a1 });
+            }
+            var m = new Mesh { name = "Funda" };
+            m.SetVertices(v); m.SetUVs(0, uv); m.SetTriangles(tri, 0);
+            m.RecalculateNormals(); m.RecalculateBounds();
+            return m;
+        }
+
+        /// <summary>Tela outdoor tipo beanbag: verde salvia, mate, con textura de bouclé.</summary>
+        static Material TelaOutdoor()
+        {
+            const int n = 64;
+            var tex = new Texture2D(n, n, TextureFormat.RGBA32, true) { name = "Bouclé outdoor", wrapMode = TextureWrapMode.Repeat };
+            var px = new Color32[n * n];
+            for (int y = 0; y < n; y++)
+            for (int x = 0; x < n; x++)
+            {
+                float ruido = Mathf.PerlinNoise(x * 0.35f, y * 0.35f) * 0.6f + Mathf.PerlinNoise(x * 1.3f + 7f, y * 1.3f) * 0.4f;
+                byte g = (byte)(255 * (0.82f + 0.18f * ruido));
+                px[y * n + x] = new Color32(g, g, g, 255);
+            }
+            tex.SetPixels32(px);
+            tex.Apply(true);
+            Guardar(tex, "Bouclé outdoor.asset");
+            var m = Lit("Tela outdoor beanbag", "#a3ac8f", 0.08f, 0f);
+            m.SetTexture("_BaseMap", tex);
+            m.SetTextureScale("_BaseMap", new Vector2(3f, 3f));
+            EditorUtility.SetDirty(m);
+            return m;
         }
 
         // ---------------- mallas y materiales ----------------
