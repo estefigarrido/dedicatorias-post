@@ -67,7 +67,9 @@ namespace CuboPost.EditorTools
         const float DistanciaCamara = 32f;
         // Ancho de la nota más chica (S) en las pantallas; las demás crecen en la misma proporción.
         // Eran 0,70 m: con las pantallas más altas, Estefi pidió todas las notas un 20 % más grandes.
-        const float AnchoNotaS = 0.70f * 1.2f;
+        // Después, otro 30 % más (1,09 m la S). Y ninguna nota pasa de los 3,80 m de altura desde el piso.
+        const float AnchoNotaS = 0.70f * 1.2f * 1.3f;
+        const float AlturaMaximaNotas = 3.8f;
         // Ejercicio de respiración (Figma, página "tareas", tarea 5): la carita mide lo que el círculo
         // violeta (Ø 1,47 m) y los anillos crecen en proporción. Centro de la carita, en metros desde
         // el extremo sur de la pantalla del lado este y desde su borde de abajo.
@@ -112,9 +114,9 @@ namespace CuboPost.EditorTools
         /// r11: video "gente corriendo" en las pantallas largas cada 7 minutos (tecla M).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} r13",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r14",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
-            AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera);
+            AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera, AlturaMaximaNotas);
 
         // Mallas de las pantallas que ya no existen (el lado este tenía dos tramos): se borran al actualizar.
         static readonly string[] MallasViejas = { "Pantalla derecha (ropero).asset", "Pantalla derecha (técnico).asset" };
@@ -499,7 +501,12 @@ namespace CuboPost.EditorTools
             espera.largoPantalla = derecha.largo;
             espera.altoPantalla = derecha.alto;
             // Notas un 20 % más grandes que antes en todas las pantallas (la S manda, las demás siguen).
-            foreach (var p in paredes) p.anchoMinimoNota = AnchoNotaS;
+            foreach (var p in paredes)
+            {
+                p.anchoMinimoNota = AnchoNotaS;
+                // Margen de arriba: de los 3,80 m (desde el piso) al borde de arriba de la pantalla.
+                p.margenArriba = Mathf.Max(p.margenArriba, Zocalo + AltoPantalla - AlturaMaximaNotas);
+            }
 
             // Paredes largas (frente y fondo): gráfica post. centrada, como en el frame del Figma
             // (1622:4941). El alto del frame es el alto de la pantalla, y la elipse roja del frame

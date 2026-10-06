@@ -34,7 +34,7 @@ namespace CuboPost
         [Tooltip("Si esta pantalla muestra dedicatorias. Apagado: solo gráfica y puntos.")]
         public bool recibeNotas = true;
         [Tooltip("Ancho mínimo de la nota más chica (S), en metros. Las demás crecen en la misma proporción.")]
-        public float anchoMinimoNota = 0.84f;
+        public float anchoMinimoNota = 1.092f;
         [Tooltip("Segundos que cada nota queda visible con opacidad completa.")]
         public float segundosVisible = 15f;
         [Tooltip("Duración de la aparición (opacidad 0 → 100 %) y de la desaparición (100 → 0 %).")]
