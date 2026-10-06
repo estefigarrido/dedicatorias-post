@@ -28,7 +28,7 @@ namespace CuboPost.EditorTools
     /// </summary>
     public static class ConstruirVelas
     {
-        const string Version = "Velas v6";   // subir si cambia la disposición
+        const string Version = "Velas v7";   // subir si cambia la disposición
         const string NombreRaiz = "Velas de sombra";
         const string RutaEscena = "Assets/Scenes/CuboPost.unity";
         const string Carpeta = "Assets/CuboPost/Generado/Velas";
@@ -37,10 +37,12 @@ namespace CuboPost.EditorTools
         // centro (x este, z norte), diámetro y altura del aro, en metros. Grupo 0 = norte, 1 = este.
         static readonly (float x, float z, float d, float h, int grupo)[] Velas =
         {
-            (7.50f, 10.08f, 4.14f, 6.5f, 0), (10.37f, 10.29f, 6.40f, 6.9f, 0),
-            (11.64f, 8.70f, 4.14f, 6.3f, 0), (13.68f, 8.98f, 4.14f, 6.6f, 0),
-            (15.64f, 3.71f, 6.40f, 6.8f, 1), (12.44f, 1.64f, 4.14f, 6.4f, 1),
-            (17.26f, -0.43f, 4.14f, 6.4f, 1), (13.95f, -2.96f, 6.40f, 6.7f, 1),
+            // Alturas: el tope es 5,40 m, 40 cm sobre el stand (5,00 m, lo pidió Estefi). Las que se pisan
+            // en planta van en tres niveles (5,10 · 5,25 · 5,40) para que los aros no se choquen.
+            (7.50f, 10.08f, 4.14f, 5.10f, 0), (10.37f, 10.29f, 6.40f, 5.40f, 0),
+            (11.64f, 8.70f, 4.14f, 5.10f, 0), (13.68f, 8.98f, 4.14f, 5.25f, 0),
+            (15.64f, 3.71f, 6.40f, 5.40f, 1), (12.44f, 1.64f, 4.14f, 5.25f, 1),
+            (17.26f, -0.43f, 4.14f, 5.25f, 1), (13.95f, -2.96f, 6.40f, 5.10f, 1),
         };
         // Postes de carga del plano (grupo 1803:4828). sostiene = true: el poste sube hasta los aros
         // cercanos y los toma con un brazo (reemplaza a un palo de soporte).
@@ -54,7 +56,7 @@ namespace CuboPost.EditorTools
         // Medidas de la estructura (m).
         const float RadioAro = 0.03f, RadioPalo = 0.05f, RadioUnion = 0.03f, RadioTornapunta = 0.025f;
         const float LadoBase = 1f, AltoBase = 0.45f, LargoTornapunta = 0.9f;
-        const float MargenTela = 0.12f, CadaTensor = 0.3f, Comba = 0.12f;
+        const float MargenTela = 0.12f, CadaTensor = 0.3f, Comba = 0.05f;   // poca comba: entre niveles hay solo 15 cm
         const float OpacidadTela = 0.72f;
 
         // Los palos comunes van solo sobre el pasto: nunca en la explanada ni sobre el murete negro.
@@ -449,7 +451,7 @@ namespace CuboPost.EditorTools
 
             // El poste sube por encima de todas las velas: arriba va el panel solar, al sol.
             float techo = Velas.Max(v => v.h);
-            float arriba = techo + 0.45f - a.suelo;   // medido desde el piso donde apoya
+            float arriba = techo + RadioAro + 0.02f - a.suelo;   // panel a 40 cm del stand, apenas sobre los aros
             var fuste = GameObject.CreatePrimitive(PrimitiveType.Cube);
             fuste.name = "Poste 20 × 20";
             fuste.transform.SetParent(poste, false);

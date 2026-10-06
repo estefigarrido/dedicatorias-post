@@ -47,7 +47,7 @@ namespace CuboPost.EditorTools
         // Laterales: dos mitades de 6,21 m. Cada mitad, según el corte transversal: 3,00 m de la
         // pantalla al mat, 0,71 m de mat y 2,50 m del mat a la cortina (antes 2,00 · 0,71 · 1,00 = 7,42 m).
         const float Profundidad = 12.42f;
-        const float AltoPared = 5.5f;      // pared con pantalla (eran 3,50 m; Estefi pidió 2 m más de altura)
+        const float AltoPared = 4.5f;      // pared con pantalla (fue 3,50 y 5,50 m; Estefi pidió 1 m menos: stand de 5 m)
         const float Coronamiento = 0.5f;   // franja oscura de arriba
         const float AltoTotal = AltoPared + Coronamiento;   // 6 m
         const float Zocalo = 0.2f;         // la pantalla arranca a 20 cm del piso
