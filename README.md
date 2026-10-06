@@ -86,6 +86,10 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
 - **Pantalla de espera** (tecla **E**): entre las dos puertas del lado este (4,4 × 4,1 m). "La siguiente clase comienza
   en: N min" (las clases arrancan cada 20 minutos del reloj), con anillos verdes que se abren desde el centro y un
   puntito que gira. Entra creciendo, queda 30 s y se va achicándose. Código: `Scripts/PantallaEspera.cs`.
+- **Video en las pantallas largas** (frente y fondo), cada 7 minutos o con la tecla **M**: un barrido verde entra de
+  izquierda a derecha en 2 s, se pasa `StreamingAssets/gente-corriendo.mp4` (3:1, a toda la altura y centrado; los
+  costados toman el color del borde del video) y al terminar el negro de la marca se retira con otro barrido y vuelve
+  la pantalla de post. Código: `Scripts/VideoPantallas.cs`.
 - **Velas de sombra** (plano "01 · Implantación" del Figma): 8 velas circulares (Ø 6,40 y 4,14 m) a 5,10–5,40 m,
   tela PES verde y violeta de la marca, semitraslúcida, en aros de aluminio unidos arriba. Los 4 postes de carga
   hacen de soporte; los demás palos van sobre el pasto, con asientos redondos tapizados. Se arman solas al
