@@ -27,7 +27,7 @@ namespace CuboPost
         public ParedPantalla[] paredes;
         public string archivo = "gente-corriendo.mp4";
         [Tooltip("Tamaño del video en px (para el encuadre).")]
-        public Vector2Int tamanoVideo = new Vector2Int(3240, 1080);
+        public Vector2Int tamanoVideo = new Vector2Int(4096, 858);
         [Tooltip("Segundos hasta la primera vez (después, cada cadaCuantosSegundos).")]
         public float primeraVez = 420f;
         [Tooltip("Cada cuántos segundos se pasa el video (420 = 7 minutos).")]
