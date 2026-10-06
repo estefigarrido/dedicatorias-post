@@ -112,7 +112,7 @@ namespace CuboPost.EditorTools
         /// r11: video "gente corriendo" en las pantallas largas cada 7 minutos (tecla M).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} r12",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} r13",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera);
 
@@ -525,7 +525,8 @@ namespace CuboPost.EditorTools
             insignia.tamanoVideo = new Vector2Int(4096, 1484);
             insignia.primeraVez = 150f;
             insignia.cadaCuantosSegundos = 300f;
-            insignia.verde = PaletaPost.Oscuro;   // empieza en el negro de la marca
+            insignia.verde = PaletaPost.Oscuro;
+            insignia.conBarrido = false;   // la insignia aparece y se va directo, sin barrido
             insignia.tecla = UnityEngine.InputSystem.Key.I;
 
             // Por ahora las dedicatorias salen solo en la pantalla del frente (la que ve la cámara al

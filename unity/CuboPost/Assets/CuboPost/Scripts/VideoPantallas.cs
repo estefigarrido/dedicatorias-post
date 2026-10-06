@@ -33,6 +33,8 @@ namespace CuboPost
         [Tooltip("Cada cuántos segundos se pasa el video (420 = 7 minutos).")]
         public float cadaCuantosSegundos = 420f;
         public float segundosBarrido = 2f;
+        [Tooltip("Con barrido de entrada y de salida. Apagado: el video aparece y se va directo.")]
+        public bool conBarrido = true;
         [Tooltip("Color del barrido de entrada: el del primer cuadro del video.")]
         public Color verde = new Color(0x4c / 255f, 0xb7 / 255f, 0x68 / 255f);
         [Tooltip("Tecla para pasarlo en el momento (para probar).")]
@@ -215,8 +217,9 @@ namespace CuboPost
             {
                 case Estado.Entrando:
                     // El verde entra desde la izquierda y cubre toda la pantalla en 2 s.
-                    foreach (var c in capas) Barrido(c.verde, 0f, suave);
-                    if (p >= 1f && reproductor.isPrepared)
+                    // Sin barrido: no se tapa nada y el video arranca apenas está listo.
+                    foreach (var c in capas) Barrido(c.verde, 0f, conBarrido ? suave : 0f);
+                    if ((p >= 1f || !conBarrido) && reproductor.isPrepared)
                     {
                         reproductor.time = 0;
                         reproductor.Play();
@@ -240,11 +243,12 @@ namespace CuboPost
                         {
                             c.contenido.SetActive(false);
                             c.verde.gameObject.SetActive(false);
-                            c.negro.gameObject.SetActive(true);
+                            c.negro.gameObject.SetActive(conBarrido);
                             Barrido(c.negro, 0f, 1f);
                         }
                         estado = Estado.Saliendo;
-                        cambio = Time.time;
+                        // Sin barrido se va directo (la salida termina en el próximo cuadro).
+                        cambio = conBarrido ? Time.time : Time.time - segundosBarrido;
                     }
                     break;
 

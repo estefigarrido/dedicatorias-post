@@ -91,8 +91,7 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   costados toman el color del borde del video) y al terminar el negro de la marca se retira con otro barrido y vuelve
   la pantalla de post. Código: `Scripts/VideoPantallas.cs`.
 - **Animación de la insignia** en la pantalla oeste (la lateral sin puertas), a los 2:30 y después cada 5 minutos, o
-  con la tecla **I**: mismo barrido de entrada y de salida, pero en el negro de la marca (#252525), con
-  `StreamingAssets/animacion-insignia.mp4`. Los dos videos no se pisan nunca: si a uno le toca mientras el otro está
+  con la tecla **I**: aparece y se va directo, sin barrido (`StreamingAssets/animacion-insignia.mp4`). Los dos videos no se pisan nunca: si a uno le toca mientras el otro está
   en pantalla, espera a que termine y deja 20 s de separación.
 - **Velas de sombra** (plano "01 · Implantación" del Figma): 8 velas circulares (Ø 6,40 y 4,14 m) a 5,10–5,40 m,
   tela PES verde y violeta de la marca, semitraslúcida, en aros de aluminio unidos arriba. Los 4 postes de carga
