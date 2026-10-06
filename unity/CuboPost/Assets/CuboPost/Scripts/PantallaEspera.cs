@@ -9,14 +9,15 @@ namespace CuboPost
     /// <summary>
     /// Pantalla de espera para la fila (Figma, página "tareas" → "Tarea 6"), en la pantalla del lado
     /// este, entre la puerta de salida y la de entrada (la zona verde del Figma).
-    ///   · Con la tecla E aparece creciendo (scale up), queda 30 s y se va achicándose (scale down).
-    ///   · "La siguiente clase comienza en: N min": las clases duran como máximo 20 minutos y
-    ///     arrancan cada 20 minutos del reloj (en punto, y 20, y 40); N son los minutos que faltan.
+    ///   · Solo aparece cuando la persona de sistemas toca la tecla E: crece (scale up), queda 30 s y
+    ///     se va achicándose (scale down).
+    ///   · "La siguiente clase comienza en: 10 min" (siempre 10 min).
     ///   · Anillos verdes que se van abriendo desde el centro (como la animación de referencia de
-    ///     Pinterest) y el puntito verde que gira alrededor del texto.
+    ///     Pinterest) sin pasar nunca el borde de la pantalla, y el puntito verde que gira.
+    ///   · Sin fondo ni rellenos negros: círculos y estrellas son solo contornos (vectoriales).
     /// Diseño: frame del Figma de 2264 × 2108 px (rectángulo 1853:4778 y lo que tiene encima). La zona
     /// se mide desde abajo a la izquierda de la pantalla, vista de frente, en metros; 1 px del Figma
-    /// = zona.width / 2264 metros. Lo que se sale de la pantalla (los anillos grandes) se recorta.
+    /// = zona.width / 2264 metros.
     /// </summary>
     public class PantallaEspera : MonoBehaviour
     {
@@ -24,8 +25,11 @@ namespace CuboPost
         // Anillos (en px del Figma): centro, trazo y paso entre uno y otro. En reposo coinciden con
         // los del diseño (radios 354, 642, 916 y 1187; opacidades 40 % y 100 % alternadas).
         static readonly Vector2 CentroAnillos = new Vector2(4.5f, -7.5f);
-        const float Trazo = 7f, RadioInicial = 77f, Paso = 277.5f, RadioDisco = 1194f;
-        const int CantidadAnillos = 6;
+        // Los anillos nunca pasan el borde de la pantalla: el más grande llega hasta radioMaximo
+        // (lo que hay del centro al borde de arriba o de abajo) y se desvanece antes.
+        const float Trazo = 7f, RadioInicial = 77f;
+        const int CantidadAnillos = 4;
+        float radioMaximo;
         // Puntito verde que gira (el "Spot" de Ø 124 que está sobre el tercer anillo).
         const float DiametroPuntito = 124f, RadioGiro = 642.5f, AnguloInicial = 48.5f;
 
@@ -43,8 +47,6 @@ namespace CuboPost
         public float segundosPorAnillo = 2.5f;
         [Tooltip("Segundos por vuelta del puntito verde.")]
         public float segundosPorVuelta = 10f;
-        [Tooltip("Las clases empiezan cada esta cantidad de minutos del reloj.")]
-        public int minutosPorClase = 20;
 
         enum Estado { Oculto, Entrando, Visible, Saliendo }
 
@@ -80,17 +82,10 @@ namespace CuboPost
             visual.anchoredPosition = new Vector2(zona.center.x - largoPantalla / 2f, zona.center.y - altoPantalla / 2f) / k;
             visual.sizeDelta = new Vector2(AnchoDiseno, AltoDiseno);
 
-            // Fondo: el cuadrado oscuro y el disco del anillo más grande (también oscuro).
-            var fondo = Hijo("Fondo", visual, typeof(Image)).GetComponent<Image>();
-            fondo.rectTransform.sizeDelta = new Vector2(AnchoDiseno, AltoDiseno);
-            fondo.color = PaletaPost.Oscuro;
-            fondo.raycastTarget = false;
-            var disco = Hijo("Disco", visual, typeof(AnilloUI)).GetComponent<AnilloUI>();
-            disco.rectTransform.anchoredPosition = CentroAnillos;
-            disco.rectTransform.sizeDelta = Vector2.one * RadioDisco * 2f;
-            disco.Grosor = RadioDisco;
-            disco.color = PaletaPost.Oscuro;
-            disco.raycastTarget = false;
+            // Sin fondo propio: se ve la pantalla detrás. Radio máximo de los anillos: hasta el borde
+            // más cercano de la pantalla (arriba o abajo), con un margen.
+            float centroY = zona.center.y / k + CentroAnillos.y;
+            radioMaximo = Mathf.Min(centroY, altoPantalla / k - centroY) - Trazo - 20f;
 
             anillos = new AnilloUI[CantidadAnillos];
             for (int i = 0; i < CantidadAnillos; i++)
@@ -113,15 +108,13 @@ namespace CuboPost
             Punto(new Vector2(576.5f, -614.5f), 99f, false, 3);
             Punto(new Vector2(-533.5f, -581.5f), 33f, false, 4);
             Punto(new Vector2(-579.5f, 727.5f), 59f, true, 5);
-            Estrella(RecursosPost.Estrella12Verde, new Vector2(-1097f, -382f), 172f * 1.043f, 0f, 6);
-            Estrella(RecursosPost.Estrella7Verde, new Vector2(960.5f, 517.5f), 145f * 1.043f, -16f, 7);
+            Estrella(new Vector2(-1097f, -382f), 172f + 2f * 5.4f, 12, 0.6f, 8f, 0f, 6);
+            Estrella(new Vector2(960.5f, 517.5f), 145f + 2f * 3.6f, 7, 0.6f, 7f, -16f, 7);
 
             // El puntito verde que gira.
-            puntito = Hijo("Puntito que gira", visual, typeof(RawImage));
+            puntito = Hijo("Puntito que gira", visual);
             puntito.sizeDelta = Vector2.one * DiametroPuntito;
-            var raw = puntito.GetComponent<RawImage>();
-            raw.texture = RecursosPost.Punto(PaletaPost.Verde, PaletaPost.Crema, 6.6f / DiametroPuntito);
-            raw.raycastTarget = false;
+            Circulo(puntito, DiametroPuntito, true);
 
             // Textos.
             var titulo = Texto("La siguiente clase comienza en:", new Vector2(4.5f, 112.5f), new Vector2(1400f, 100f), 64f);
@@ -158,25 +151,44 @@ namespace CuboPost
 
         void Punto(Vector2 pos, float d, bool verde, int i)
         {
-            var rt = Hijo("Punto", visual, typeof(RawImage), typeof(DecoFlotante));
+            var rt = Hijo("Punto", visual, typeof(DecoFlotante));
             rt.anchoredPosition = pos;
             rt.sizeDelta = Vector2.one * d;
-            var raw = rt.GetComponent<RawImage>();
-            raw.texture = RecursosPost.Punto(verde ? PaletaPost.Verde : PaletaPost.Oscuro, PaletaPost.Crema, 6.6f / d);
-            raw.raycastTarget = false;
+            Circulo(rt, d, verde);
             Flotar(rt, i, 0f);
         }
 
-        void Estrella(Texture tex, Vector2 pos, float tam, float giro, int i)
+        /// <summary>Círculo vectorial: borde crema y, si es verde, relleno verde; si no, sin relleno.</summary>
+        void Circulo(RectTransform padre, float d, bool verde)
         {
-            if (tex == null) return;
-            var rt = Hijo("Estrella", visual, typeof(RawImage), typeof(DecoFlotante));
+            if (verde)
+            {
+                var relleno = Hijo("Relleno", padre, typeof(AnilloUI)).GetComponent<AnilloUI>();
+                relleno.rectTransform.sizeDelta = Vector2.one * d;
+                relleno.Grosor = d / 2f;
+                relleno.color = PaletaPost.Verde;
+                relleno.raycastTarget = false;
+            }
+            var borde = Hijo("Borde", padre, typeof(ContornoUI)).GetComponent<ContornoUI>();
+            borde.rectTransform.sizeDelta = Vector2.one * d;
+            borde.grosor = 6.6f;
+            borde.color = PaletaPost.Crema;
+            borde.raycastTarget = false;
+        }
+
+        /// <summary>Estrella "flor" del Figma, solo el contorno verde (sin relleno).</summary>
+        void Estrella(Vector2 pos, float tam, int puntas, float interior, float trazo, float giro, int i)
+        {
+            var rt = Hijo("Estrella", visual, typeof(ContornoUI), typeof(DecoFlotante));
             rt.anchoredPosition = pos;
             rt.sizeDelta = Vector2.one * tam;
             rt.localRotation = Quaternion.Euler(0f, 0f, giro);
-            var raw = rt.GetComponent<RawImage>();
-            raw.texture = tex;
-            raw.raycastTarget = false;
+            var e = rt.GetComponent<ContornoUI>();
+            e.puntas = puntas;
+            e.interior = interior;
+            e.grosor = trazo;
+            e.color = PaletaPost.Verde;
+            e.raycastTarget = false;
             Flotar(rt, i, 10f);
         }
 
@@ -272,41 +284,60 @@ namespace CuboPost
                     if (p >= 1f) { estado = Estado.Oculto; visual.localScale = Vector3.zero; }
                     break;
             }
+            Despejar(estado == Estado.Oculto ? 0f : Mathf.Clamp01(visual.localScale.x));
             if (estado == Estado.Oculto) return;
 
             // Anillos que se abren desde el centro: cada uno avanza un lugar cada segundosPorAnillo,
-            // aparece de a poco en el medio y se desvanece al pasar el más grande del diseño.
+            // aparece de a poco en el medio y se desvanece antes de llegar al borde de la pantalla.
             float avance = Time.time / segundosPorAnillo;
+            float paso = (radioMaximo - RadioInicial) / CantidadAnillos;
             for (int i = 0; i < anillos.Length; i++)
             {
                 float lugar = (i + avance) % CantidadAnillos;
-                float radio = RadioInicial + lugar * Paso;
+                float radio = RadioInicial + lugar * paso;
                 anillos[i].rectTransform.sizeDelta = Vector2.one * (radio + Trazo) * 2f;
                 float alfa = (i % 2 == 0 ? 1f : 0.4f)
                     * Mathf.SmoothStep(0f, 1f, Mathf.Clamp01(lugar))
-                    * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(4f, 5.6f, lugar)));
+                    * (1f - Mathf.SmoothStep(0f, 1f, Mathf.InverseLerp(CantidadAnillos - 0.8f, CantidadAnillos, lugar)));
                 anillos[i].color = new Color(PaletaPost.Verde.r, PaletaPost.Verde.g, PaletaPost.Verde.b, alfa);
             }
 
             // El puntito gira en el sentido de las agujas del reloj.
             float ang = (AnguloInicial - Time.time / segundosPorVuelta * 360f) * Mathf.Deg2Rad;
             puntito.anchoredPosition = CentroAnillos + new Vector2(Mathf.Cos(ang), Mathf.Sin(ang)) * RadioGiro;
+        }
 
-            string texto = MinutosParaLaProxima() + " min";
-            if (minutos.text != texto)
+        // Puntos propios de la pantalla que caen dentro de la animación: se desvanecen mientras está.
+        readonly System.Collections.Generic.List<RawImage> tapados = new System.Collections.Generic.List<RawImage>();
+        float despejado = -1f;
+
+        void Despejar(float cuanto)
+        {
+            if (Mathf.Approximately(cuanto, despejado)) return;
+            if (despejado <= 0f && cuanto > 0f) BuscarTapados();
+            despejado = cuanto;
+            foreach (var r in tapados)
             {
-                minutos.text = texto;
-                foreach (var c in contorno) c.text = texto;
+                if (r == null) continue;
+                var c = r.color;
+                c.a = 1f - cuanto;
+                r.color = c;
             }
         }
 
-        /// <summary>Minutos (redondeados para arriba) que faltan para la próxima clase del reloj.</summary>
-        int MinutosParaLaProxima()
+        /// <summary>Los puntos de la pantalla (no los de esta animación) que quedan dentro del círculo de los anillos.</summary>
+        void BuscarTapados()
         {
-            var ahora = DateTime.Now;
-            double desdeLaHora = ahora.Minute + ahora.Second / 60.0;
-            double resto = minutosPorClase - desdeLaHora % minutosPorClase;
-            return Mathf.Clamp((int)Math.Ceiling(resto - 1e-6), 1, minutosPorClase);
+            tapados.Clear();
+            var pared = GetComponentInParent<ParedPantalla>();
+            if (pared == null) return;
+            var centro = visual.TransformPoint(CentroAnillos);
+            float radio = (radioMaximo + 120f) * k;
+            foreach (var r in pared.GetComponentsInChildren<RawImage>(true))
+            {
+                if (r.transform.IsChildOf(transform) || r.name != "Punto") continue;
+                if (Vector3.Distance(r.transform.position, centro) < radio) tapados.Add(r);
+            }
         }
 
         static float Rebote(float p, bool alReves = false)
