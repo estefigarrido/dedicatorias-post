@@ -68,9 +68,12 @@ namespace CuboPost.EditorTools
         // Ancho de la nota más chica (S) en las pantallas; las demás crecen en la misma proporción.
         // Eran 0,70 m: con las pantallas más altas, Estefi pidió todas las notas un 20 % más grandes.
         const float AnchoNotaS = 0.70f * 1.2f;
-        // Ejercicio de respiración (Figma, página "tareas"): la zona roja, a la derecha de la puerta
-        // de entrada, separada del marco y desde el borde de abajo de la pantalla.
-        const float AnchoRespiracion = 2f, AltoRespiracion = 2.3f, SeparacionRespiracion = 0.3f;
+        // Ejercicio de respiración (Figma, página "tareas", tarea 5): la carita mide lo que el círculo
+        // violeta (Ø 1,47 m) y los anillos crecen en proporción. Centro de la carita, en metros desde
+        // el extremo sur de la pantalla del lado este y desde su borde de abajo.
+        const float CaraRespiracion = 1.47f, CentroRespiracionX = 10.50f, CentroRespiracionY = 1.85f;
+        // Pantalla de espera (tarea 6): la zona verde, entre la puerta de salida y la de entrada.
+        static readonly Rect ZonaEspera = new Rect(2.67f, 0.08f, 4.44f, 4.13f);
 
         // Visitante: la persona con la que se recorre la escena en Play (W A S D). Mide 1,75 m y
         // tiene los ojos unos 12 cm por debajo de la coronilla, como una persona de esa altura.
@@ -105,11 +108,12 @@ namespace CuboPost.EditorTools
         /// r7: el lado este es una sola pantalla corrida con dos puertas de 0,90 m (entrada y salida).
         /// r8: visitante de 1,75 m para recorrer la escena con W A S D, fila con figuras y colisiones.
         /// r9: ejercicio de respiración junto a la entrada (tecla E) y notas un 20 % más grandes.
+        /// r10: respiración más grande (tecla R, cada 5 min) y pantalla de espera entre las puertas (tecla E).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13}x{14} r9",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} r10",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
-            AnchoNotaS, AnchoRespiracion, AltoRespiracion);
+            AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera);
 
         // Mallas de las pantallas que ya no existen (el lado este tenía dos tramos): se borran al actualizar.
         static readonly string[] MallasViejas = { "Pantalla derecha (ropero).asset", "Pantalla derecha (técnico).asset" };
@@ -475,15 +479,24 @@ namespace CuboPost.EditorTools
             foreach (var v in vanos)
                 derecha.zonasBloqueadas.Add(new Rect(v.x - 0.1f, 0f, v.width + 0.2f, v.height + 0.1f));
             // Ejercicio de respiración para la fila: a la derecha de la puerta de entrada (vista de
-            // frente). Su zona también queda bloqueada, así los puntos que flotan no la cruzan.
-            var zonaRespiracion = new Rect(zPuertaEntrada - sur + medioVano + SeparacionRespiracion, 0f, AnchoRespiracion, AltoRespiracion);
-            derecha.zonasBloqueadas.Add(new Rect(zonaRespiracion.x - 0.1f, 0f, zonaRespiracion.width + 0.2f, zonaRespiracion.height + 0.1f));
-            var respiracion = new GameObject("Ejercicio de respiración (tecla E)").AddComponent<EjercicioRespiracion>();
+            // frente). La zona es el cuadrado del anillo más grande; también queda bloqueada, así los
+            // puntos que flotan no la cruzan.
+            float ladoRespiracion = CaraRespiracion * EjercicioRespiracion.DiametroMayor / EjercicioRespiracion.DiametroCara;
+            var zonaRespiracion = new Rect(CentroRespiracionX - ladoRespiracion / 2f, CentroRespiracionY - ladoRespiracion / 2f, ladoRespiracion, ladoRespiracion);
+            derecha.zonasBloqueadas.Add(new Rect(zonaRespiracion.x - 0.1f, Mathf.Max(0f, zonaRespiracion.y - 0.1f), zonaRespiracion.width + 0.2f, zonaRespiracion.height + 0.2f));
+            var respiracion = new GameObject("Ejercicio de respiración (tecla R, cada 5 min)").AddComponent<EjercicioRespiracion>();
             respiracion.transform.SetParent(derecha.transform, false);
             respiracion.zona = zonaRespiracion;
             respiracion.largoPantalla = derecha.largo;
             respiracion.altoPantalla = derecha.alto;
             respiracion.Armar();
+            // Pantalla de espera (tecla E): entre las dos puertas. Cuando aparece tapa los puntos de
+            // atrás con su fondo; mientras no está, la pantalla se ve como siempre.
+            var espera = new GameObject("Pantalla de espera (tecla E)").AddComponent<PantallaEspera>();
+            espera.transform.SetParent(derecha.transform, false);
+            espera.zona = ZonaEspera;
+            espera.largoPantalla = derecha.largo;
+            espera.altoPantalla = derecha.alto;
             // Notas un 20 % más grandes que antes en todas las pantallas (la S manda, las demás siguen).
             foreach (var p in paredes) p.anchoMinimoNota = AnchoNotaS;
 

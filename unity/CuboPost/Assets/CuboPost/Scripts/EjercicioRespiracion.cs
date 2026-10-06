@@ -7,14 +7,17 @@ using UnityEngine.UI;
 namespace CuboPost
 {
     /// <summary>
-    /// Ejercicio de respiración para la fila de espera (Figma, página "tareas" → "Tarea 1"), en la
-    /// pantalla del lado este, a la derecha de la puerta de entrada: la zona roja del Figma, que
-    /// queda bloqueada para que los puntos de la pantalla no la crucen.
-    /// Con la tecla E arranca (y con E de nuevo se corta): 5 s de inhalar y 5 s de exhalar.
-    /// Al inhalar aparece un anillo más grande detrás de la carita cada segundo; al exhalar se va
-    /// uno por segundo, del más grande al más chico. La carita cambia según se inhale o se exhale.
-    /// Va como hijo de la pantalla, en su centro: la zona se mide desde abajo a la izquierda de la
-    /// pantalla (vista de frente), en metros. También se ve sin apretar Play (quieta, sin guardarse).
+    /// Ejercicio de respiración para la fila de espera (Figma, página "tareas" → "Tarea 1" y "Tarea 5"),
+    /// en la pantalla del lado este, a la derecha de la puerta de entrada (zona bloqueada para los
+    /// puntos de la pantalla).
+    ///   · Aparece solo cada 5 minutos, o con la tecla R (con R de nuevo se corta).
+    ///   · Entra creciendo (scale up), hace 2 respiraciones (5 s inhalar + 5 s exhalar) y se va
+    ///     achicándose (scale down).
+    ///   · Al inhalar aparece un anillo más grande detrás de la carita cada segundo; al exhalar se va
+    ///     uno por segundo. La carita cambia según se inhale o se exhale, late suave y "respira".
+    /// La carita mide lo que el círculo violeta del Figma (Ø 1,47 m) y los anillos la acompañan en
+    /// proporción. Va como hijo de la pantalla, en su centro: la zona (el cuadrado que ocupa el anillo
+    /// más grande) se mide desde abajo a la izquierda de la pantalla, vista de frente, en metros.
     /// </summary>
     [ExecuteAlways]
     public class EjercicioRespiracion : MonoBehaviour
@@ -22,40 +25,51 @@ namespace CuboPost
         // Frame de la animación en el Figma (1782:5656), en px: anillos del más chico al más
         // grande y la carita del centro.
         static readonly float[] DiametrosAnillo = { 524f, 657f, 771f, 900f, 996f };
-        const float DiametroCara = 409f, DiametroMayor = 996f;
+        public const float DiametroCara = 409f, DiametroMayor = 996f;
         // Colores de los anillos (1782:5674): crema al 33 % y violeta al 48 %, alternados desde afuera.
         static readonly Color AnilloCrema = new Color(PaletaPost.Crema.r, PaletaPost.Crema.g, PaletaPost.Crema.b, 0.33f);
         static readonly Color AnilloVioleta = new Color(PaletaPost.NotaVioleta.r, PaletaPost.NotaVioleta.g, PaletaPost.NotaVioleta.b, 0.48f);
 
         [Header("Ubicación (metros)")]
-        [Tooltip("Zona roja del Figma: desde abajo a la izquierda de la pantalla, vista de frente.")]
-        public Rect zona = new Rect(8.72f, 0f, 2f, 2.3f);
+        [Tooltip("Cuadrado del anillo más grande: desde abajo a la izquierda de la pantalla, vista de frente.")]
+        public Rect zona = new Rect(8.71f, 0.06f, 3.58f, 3.58f);
         public float largoPantalla = 12.42f;
-        public float altoPantalla = 5.3f;
+        public float altoPantalla = 4.3f;
 
         [Header("Ritmo")]
         public float segundosInhalar = 5f;
         public float segundosExhalar = 5f;
-        [Tooltip("Respiraciones (inhalar + exhalar) cada vez que se toca la E.")]
-        public int respiraciones = 6;
+        [Tooltip("Respiraciones (inhalar + exhalar) cada vez que aparece.")]
+        public int respiraciones = 2;
+        [Tooltip("Cada cuántos segundos aparece solo (300 = 5 minutos).")]
+        public float cadaCuantosSegundos = 300f;
         [Tooltip("Lo que tarda cada anillo en aparecer o en irse.")]
         public float segundosAnillo = 0.5f;
+        [Tooltip("Lo que tarda en crecer al aparecer y en achicarse al irse.")]
+        public float segundosEscala = 0.7f;
 
         const string NombreLienzo = "Respiración (canvas)";
         const float MetrosPorUnidad = 0.001f;   // 1 unidad del lienzo = 1 mm
-        const float AltoLeyenda = 300f;         // franja de abajo para "INHALÁ" / "EXHALÁ"
 
-        RectTransform lienzo, cara;
+        enum Estado { Oculto, Entrando, Visible, Saliendo }
+
+        RectTransform lienzo, visual, cara;
         RawImage[] anillos;
         float[] presencia;
         RawImage caraInhalando, caraExhalando;
         TextMeshProUGUI leyenda;
-        bool activo;
-        float inicio, mezclaCara;
+        GameObject fondoLeyenda;
+        Estado estado;
+        float inicio, cambio, proximaVez, mezclaCara;
 
         void OnEnable() => Armar();
 
-        /// <summary>Rearma la animación (por ejemplo, después de cambiar la zona).</summary>
+        void Start()
+        {
+            if (Application.isPlaying) proximaVez = Time.time + cadaCuantosSegundos;
+        }
+
+        /// <summary>Rearma la animación (por ejemplo, después de cambiar la zona). Queda oculta.</summary>
         public void Armar()
         {
             Borrar();
@@ -72,46 +86,92 @@ namespace CuboPost
             lienzo.localRotation = Quaternion.identity;
             lienzo.localPosition = new Vector3(zona.center.x - largoPantalla / 2f, zona.center.y - altoPantalla / 2f, -0.016f);
 
-            // El círculo más grande ocupa todo el ancho de la zona; abajo queda la leyenda.
-            var tam = lienzo.sizeDelta;
-            float diametro = Mathf.Min(tam.x, tam.y - AltoLeyenda);
-            var centro = new Vector2(0f, tam.y / 2f - diametro / 2f);
-            float k = diametro / DiametroMayor;
+            // Todo va dentro de "visual", que es lo que crece y se achica al aparecer y al irse.
+            visual = (RectTransform)Nuevo("Visual", typeof(RectTransform)).transform;
+            visual.SetParent(lienzo, false);
+            visual.sizeDelta = lienzo.sizeDelta;
 
+            float diametro = Mathf.Min(lienzo.sizeDelta.x, lienzo.sizeDelta.y);
+            float k = diametro / DiametroMayor;
             var disco = DiscoDifuminado();
             anillos = new RawImage[DiametrosAnillo.Length];
             presencia = new float[DiametrosAnillo.Length];
             for (int i = anillos.Length - 1; i >= 0; i--)   // del más grande al más chico: los grandes quedan detrás
             {
-                anillos[i] = Imagen($"Anillo {i + 1}", disco, centro, DiametrosAnillo[i] * k);
+                anillos[i] = Imagen($"Anillo {i + 1}", disco, Vector2.zero, DiametrosAnillo[i] * k, visual);
                 anillos[i].color = i % 2 == 0 ? AnilloCrema : AnilloVioleta;
             }
 
             cara = (RectTransform)Nuevo("Carita", typeof(RectTransform)).transform;
-            cara.SetParent(lienzo, false);
-            cara.anchoredPosition = centro;
+            cara.SetParent(visual, false);
             cara.sizeDelta = Vector2.one * DiametroCara * k;
             caraExhalando = Imagen("Exhalando", Resources.Load<Texture2D>("Respiracion/cara-exhalando"), Vector2.zero, DiametroCara * k, cara);
             caraInhalando = Imagen("Inhalando", Resources.Load<Texture2D>("Respiracion/cara-inhalando"), Vector2.zero, DiametroCara * k, cara);
 
-            var t = Nuevo("Leyenda", typeof(RectTransform), typeof(TextMeshProUGUI));
+            // Cuenta (INHALÁ 3 / EXHALÁ 2) debajo de la carita, sobre una banda oscura para que se lea
+            // aunque pase por encima de los anillos.
+            float yLeyenda = -(DiametroCara * k / 2f + 190f);
+            fondoLeyenda = Nuevo("Fondo de la cuenta", typeof(RectTransform), typeof(Image));
+            var fondo = (RectTransform)fondoLeyenda.transform;
+            fondo.SetParent(visual, false);
+            fondo.anchoredPosition = new Vector2(0f, yLeyenda);
+            fondo.sizeDelta = new Vector2(820f, 190f);
+            var img = fondoLeyenda.GetComponent<Image>();
+            img.color = new Color(PaletaPost.Oscuro.r, PaletaPost.Oscuro.g, PaletaPost.Oscuro.b, 0.85f);
+            img.raycastTarget = false;
+            var t = Nuevo("Cuenta", typeof(RectTransform), typeof(TextMeshProUGUI));
             var rt = (RectTransform)t.transform;
-            rt.SetParent(lienzo, false);
-            rt.anchoredPosition = new Vector2(0f, -tam.y / 2f + AltoLeyenda / 2f);
-            rt.sizeDelta = new Vector2(tam.x, AltoLeyenda);
+            rt.SetParent(visual, false);
+            rt.anchoredPosition = new Vector2(0f, yLeyenda);
+            rt.sizeDelta = new Vector2(820f, 190f);
             leyenda = t.GetComponent<TextMeshProUGUI>();
             leyenda.font = RecursosPost.FuenteMono;
-            leyenda.fontSize = 88f;
+            leyenda.fontSize = 100f;
             leyenda.characterSpacing = 4f;
             leyenda.alignment = TextAlignmentOptions.Center;
             leyenda.textWrappingMode = TextWrappingModes.NoWrap;
             leyenda.color = PaletaPost.Crema;
             leyenda.raycastTarget = false;
 
-            activo = false;
+            estado = Estado.Oculto;
+            visual.localScale = Vector3.zero;
             mezclaCara = 0f;
             Dibujar(-1f, 0f, true);
         }
+
+        /// <summary>Aparece (crece) y hace sus respiraciones. Si ya estaba, no hace nada.</summary>
+        public void Mostrar()
+        {
+            if (estado == Estado.Entrando || estado == Estado.Visible) return;
+            for (int i = 0; i < presencia.Length; i++) presencia[i] = 0f;
+            mezclaCara = 0f;
+            estado = Estado.Entrando;
+            cambio = Time.time;
+            inicio = Time.time + segundosEscala;   // las respiraciones arrancan cuando terminó de crecer
+            proximaVez = Time.time + cadaCuantosSegundos;
+        }
+
+        /// <summary>Se va (se achica).</summary>
+        public void Ocultar()
+        {
+            if (estado == Estado.Oculto || estado == Estado.Saliendo) return;
+            estado = Estado.Saliendo;
+            cambio = Time.time;
+        }
+
+        void Borrar()
+        {
+            for (int i = transform.childCount - 1; i >= 0; i--)
+            {
+                var hijo = transform.GetChild(i);
+                if (hijo.name != NombreLienzo) continue;
+                if (Application.isPlaying) Destroy(hijo.gameObject);
+                else DestroyImmediate(hijo.gameObject);
+            }
+            lienzo = null;
+        }
+
+        static Texture2D discoDifuminado;
 
         /// <summary>0 → 1 → 0: dos golpes cortos por latido (el segundo más suave), 0,92 s por latido.</summary>
         static float Latido(float tiempo)
@@ -120,8 +180,6 @@ namespace CuboPost
             float golpe(float centro, float ancho) => Mathf.Exp(-Mathf.Pow((f - centro) / ancho, 2f));
             return Mathf.Clamp01(golpe(0.1f, 0.06f) + 0.6f * golpe(0.32f, 0.07f));
         }
-
-        static Texture2D discoDifuminado;
 
         /// <summary>Disco blanco con el borde difuminado: el último 30 % del radio se desvanece de a poco.</summary>
         static Texture2D DiscoDifuminado()
@@ -143,18 +201,6 @@ namespace CuboPost
             return discoDifuminado = t;
         }
 
-        void Borrar()
-        {
-            for (int i = transform.childCount - 1; i >= 0; i--)
-            {
-                var hijo = transform.GetChild(i);
-                if (hijo.name != NombreLienzo) continue;
-                if (Application.isPlaying) Destroy(hijo.gameObject);
-                else DestroyImmediate(hijo.gameObject);
-            }
-            lienzo = null;
-        }
-
         /// <summary>Objeto nuevo. Fuera de Play es solo vista previa: no se guarda en la escena.</summary>
         static GameObject Nuevo(string nombre, params Type[] componentes)
         {
@@ -163,11 +209,11 @@ namespace CuboPost
             return go;
         }
 
-        RawImage Imagen(string nombre, Texture tex, Vector2 posicion, float diametro, RectTransform padre = null)
+        static RawImage Imagen(string nombre, Texture tex, Vector2 posicion, float diametro, RectTransform padre)
         {
             var go = Nuevo(nombre, typeof(RectTransform), typeof(RawImage));
             var rt = (RectTransform)go.transform;
-            rt.SetParent(padre != null ? padre : lienzo, false);
+            rt.SetParent(padre, false);
             rt.anchoredPosition = posicion;
             rt.sizeDelta = Vector2.one * diametro;
             var raw = go.GetComponent<RawImage>();
@@ -180,19 +226,50 @@ namespace CuboPost
         {
             if (!Application.isPlaying || lienzo == null) return;
             var teclado = Keyboard.current;
-            if (teclado != null && teclado.eKey.wasPressedThisFrame)
+            if (teclado != null && teclado.rKey.wasPressedThisFrame)
             {
-                activo = !activo;
-                inicio = Time.time;
+                if (estado == Estado.Oculto || estado == Estado.Saliendo) Mostrar();
+                else Ocultar();
             }
+            if (estado == Estado.Oculto && Time.time >= proximaVez) Mostrar();
+
+            // Aparecer creciendo (con un leve rebote) e irse achicándose.
+            float p = Mathf.Clamp01((Time.time - cambio) / Mathf.Max(0.01f, segundosEscala));
+            switch (estado)
+            {
+                case Estado.Entrando:
+                    visual.localScale = Vector3.one * Rebote(p);
+                    if (p >= 1f) estado = Estado.Visible;
+                    break;
+                case Estado.Visible:
+                    visual.localScale = Vector3.one;
+                    if (Time.time - inicio >= (segundosInhalar + segundosExhalar) * respiraciones) Ocultar();
+                    break;
+                case Estado.Saliendo:
+                    visual.localScale = Vector3.one * (1f - Rebote(p, true));
+                    if (p >= 1f) { estado = Estado.Oculto; visual.localScale = Vector3.zero; }
+                    break;
+            }
+            if (estado == Estado.Oculto) return;
+
             float t = Time.time - inicio;
-            if (activo && t >= (segundosInhalar + segundosExhalar) * respiraciones) activo = false;
-            Dibujar(activo ? t : -1f, Time.deltaTime, false);
+            bool respirando = estado == Estado.Visible && t >= 0f;
+            Dibujar(respirando ? t : -1f, Time.deltaTime, false);
+        }
+
+        /// <summary>0 → 1 con un leve pasarse de largo al final (aparecer) o al principio (irse).</summary>
+        static float Rebote(float p, bool alReves = false)
+        {
+            const float c = 1.6f;
+            if (alReves) return p * p * ((c + 1f) * p - c);              // se encoge un poco antes de irse
+            float q = p - 1f;
+            return 1f + q * q * ((c + 1f) * q + c);                       // crece y se pasa apenas
         }
 
         /// <summary>
-        /// t: segundos desde que arrancó (negativo = en espera). Cuántos anillos se ven sale del
-        /// segundo en curso: al inhalar 0, 1, 2, 3, 4 (y el quinto al terminar), al exhalar 5, 4, 3, 2, 1.
+        /// t: segundos desde que arrancaron las respiraciones (negativo = todavía no). Cuántos anillos
+        /// se ven sale del segundo en curso: al inhalar 0, 1, 2, 3, 4 (y el quinto al terminar), al
+        /// exhalar 5, 4, 3, 2, 1.
         /// </summary>
         void Dibujar(float t, float dt, bool inmediato)
         {
@@ -209,7 +286,8 @@ namespace CuboPost
                 float restan = inhalando ? segundosInhalar - fase : segundosInhalar + segundosExhalar - fase;
                 leyenda.text = (inhalando ? "INHALÁ  " : "EXHALÁ  ") + Mathf.CeilToInt(restan);
             }
-            else leyenda.text = "";   // en espera no se muestra nada: la E es solo un atajo para manejarlo
+            else leyenda.text = "";
+            fondoLeyenda.SetActive(leyenda.text.Length > 0);
 
             float paso01 = inmediato ? 1f : dt / Mathf.Max(0.01f, segundosAnillo);
             for (int i = 0; i < n; i++)
@@ -222,8 +300,7 @@ namespace CuboPost
                 anillos[i].rectTransform.localScale = Vector3.one * Mathf.Lerp(0.9f, 1f, p);
             }
 
-            // Carita: cambia con un fundido corto, "respira" apenas (crece un 5 % al inhalar) y late
-            // suave todo el tiempo (doble golpe, como un corazón tranquilo, ~65 por minuto).
+            // Carita: cambia con un fundido corto, "respira" apenas (crece un 5 % al inhalar) y late suave.
             mezclaCara = Mathf.MoveTowards(mezclaCara, t >= 0f && inhalando ? 1f : 0f, inmediato ? 1f : dt / 0.25f);
             caraInhalando.color = new Color(1f, 1f, 1f, mezclaCara);
             caraExhalando.color = new Color(1f, 1f, 1f, 1f - mezclaCara);

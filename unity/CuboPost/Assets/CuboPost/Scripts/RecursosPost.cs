@@ -12,7 +12,10 @@ namespace CuboPost
     public static class RecursosPost
     {
         // ---------------- tipografías ----------------
-        static TMP_FontAsset mono, texto;
+        static TMP_FontAsset mono, texto, titulo;
+
+        /// <summary>Sora Bold: títulos (pantalla de espera), como en el Figma.</summary>
+        public static TMP_FontAsset FuenteTitulo => titulo ??= Cargar("Fuentes/Sora-Bold");
 
         /// <summary>JetBrains Mono ExtraBold: el "para:" de las notas.</summary>
         public static TMP_FontAsset FuenteMono => mono ??= Cargar("Fuentes/JetBrainsMono-ExtraBold");

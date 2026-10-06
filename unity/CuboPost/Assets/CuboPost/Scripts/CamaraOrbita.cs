@@ -7,7 +7,7 @@ namespace CuboPost
     /// Cámara para mostrar el cubo:
     ///   arrastrar con el mouse = girar · rueda = acercar/alejar
     ///   1 frente · 2 derecha · 3 fondo · 4 izquierda (a la altura de la gente en la fila)
-    ///   0 vista general · R giro automático on/off
+    ///   0 vista general · G giro automático on/off
     /// </summary>
     public class CamaraOrbita : MonoBehaviour
     {
@@ -70,7 +70,8 @@ namespace CuboPost
                     giro = -32f;
                     inclinacion = 14f;
                 }
-                if (teclado.rKey.wasPressedThisFrame) giroAutomatico = !giroAutomatico;
+                // G: giro automático (la R quedó para el ejercicio de respiración).
+                if (teclado.gKey.wasPressedThisFrame) giroAutomatico = !giroAutomatico;
             }
 
             if (giroAutomatico) giro += velocidadAutomatica * Time.deltaTime;
