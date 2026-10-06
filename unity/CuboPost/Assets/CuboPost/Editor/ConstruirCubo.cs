@@ -109,9 +109,10 @@ namespace CuboPost.EditorTools
         /// r8: visitante de 1,75 m para recorrer la escena con W A S D, fila con figuras y colisiones.
         /// r9: ejercicio de respiración junto a la entrada (tecla E) y notas un 20 % más grandes.
         /// r10: respiración más grande (tecla R, cada 5 min) y pantalla de espera entre las puertas (tecla E).
+        /// r11: video "gente corriendo" en las pantallas largas cada 7 minutos (tecla M).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} r10",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} r11",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera);
 
@@ -510,6 +511,10 @@ namespace CuboPost.EditorTools
                 larga.composicionCentral = true;
                 larga.zonasElipse.Add(new Rect((Ancho - anchoElipse) / 2f, 0f, anchoElipse, AltoPantalla));
             }
+            // Video "gente corriendo" en las dos paredes largas, cada 7 minutos (tecla M para probar).
+            var video = new GameObject("Video en las pantallas largas (cada 7 min, tecla M)").AddComponent<VideoPantallas>();
+            video.transform.SetParent(cubo, false);
+            video.paredes = new[] { frente, fondo };
 
             // Por ahora las dedicatorias salen solo en la pantalla del frente (la que ve la cámara al
             // abrir). Las demás muestran gráfica y puntos. Para sumar otra, poner true acá.
