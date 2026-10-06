@@ -9,26 +9,45 @@ using UnityEngine.Video;
 namespace CuboPost
 {
     /// <summary>
-    /// Video "gente corriendo" en las pantallas largas (frente y fondo). Siempre se ve la pantalla de
-    /// post.; cada 7 minutos (o con la tecla M, para probar):
-    ///   1. un barrido verde entra de izquierda a derecha y en 2 s deja toda la pantalla verde
-    ///      (el mismo verde con el que empieza el video);
-    ///   2. se reproduce el video (21,7 s), que termina en el negro de la marca;
+    /// Un video que aparece cada tanto en unas pantallas. Siempre se ve la pantalla de post.; cuando
+    /// le toca (o con su tecla, para probar):
+    ///   1. un barrido entra de izquierda a derecha y en 2 s deja toda la pantalla del color con el
+    ///      que empieza el video (verde en "gente corriendo", negro #252525 en la insignia);
+    ///   2. se reproduce el video, que termina en el negro de la marca;
     ///   3. la pantalla queda negra (#252525) y ese negro se retira con otro barrido de izquierda a
     ///      derecha: detrás aparece la pantalla de post. de siempre.
-    /// El video es 3:1 y las pantallas 5:1: va a toda la altura, centrado, sin deformar; los costados
-    /// toman el color del borde del video (verde al principio, negro al final), así se ve continuo.
-    /// El archivo está en StreamingAssets (no se reimporta ni se convierte).
+    /// El video va a toda la altura, centrado, sin deformar; los costados toman el color del borde del
+    /// video, así se ve continuo. Los archivos están en StreamingAssets (no se reimportan).
+    ///
+    /// Turnos: los videos no se pisan nunca. Si a uno le toca mientras otro está en pantalla, espera a
+    /// que termine y deja una separación mínima; así quedan intercalados.
     /// </summary>
     public class VideoPantallas : MonoBehaviour
     {
         public ParedPantalla[] paredes;
         public string archivo = "gente-corriendo.mp4";
+        [Tooltip("Tamaño del video en px (para el encuadre).")]
+        public Vector2Int tamanoVideo = new Vector2Int(3240, 1080);
+        [Tooltip("Segundos hasta la primera vez (después, cada cadaCuantosSegundos).")]
+        public float primeraVez = 420f;
         [Tooltip("Cada cuántos segundos se pasa el video (420 = 7 minutos).")]
         public float cadaCuantosSegundos = 420f;
         public float segundosBarrido = 2f;
-        [Tooltip("Verde del primer cuadro del video (#4cb768).")]
+        [Tooltip("Color del barrido de entrada: el del primer cuadro del video.")]
         public Color verde = new Color(0x4c / 255f, 0xb7 / 255f, 0x68 / 255f);
+        [Tooltip("Tecla para pasarlo en el momento (para probar).")]
+        public Key tecla = Key.M;
+        [Tooltip("Segundos mínimos entre el final de un video y el comienzo de otro.")]
+        public float separacion = 20f;
+
+        static readonly List<VideoPantallas> todos = new List<VideoPantallas>();
+        static float ultimoFinal = -999f;
+
+        void OnEnable() => todos.Add(this);
+        void OnDisable() => todos.Remove(this);
+
+        /// <summary>¿Hay otro video en pantalla, o terminó hace menos de "separacion" segundos?</summary>
+        bool TurnoOcupado() => todos.Exists(v => v != this && v.estado != Estado.Oculto) || Time.time - ultimoFinal < separacion;
 
         enum Estado { Oculto, Entrando, Video, Saliendo }
 
@@ -50,7 +69,7 @@ namespace CuboPost
 
         void Start()
         {
-            textura = new RenderTexture(3240, 1080, 0) { name = "Video gente corriendo" };
+            textura = new RenderTexture(tamanoVideo.x, tamanoVideo.y, 0) { name = "Video " + archivo };
             reproductor = gameObject.AddComponent<VideoPlayer>();
             reproductor.playOnAwake = false;
             reproductor.isLooping = false;
@@ -66,7 +85,7 @@ namespace CuboPost
 
             foreach (var p in paredes) if (p != null) capas.Add(Armar(p));
             Mostrar(false);
-            proximaVez = Time.time + cadaCuantosSegundos;
+            proximaVez = Time.time + primeraVez;
         }
 
         void OnDestroy()
@@ -91,8 +110,11 @@ namespace CuboPost
             c.contenido = Hijo("Contenido", lienzo).gameObject;
             var cont = (RectTransform)c.contenido.transform;
             Estirar(cont);
-            // Video a toda la altura, centrado (3:1), y los costados del color del borde.
-            float alto = p.alto * 1000f, ancho = alto * 3f, costado = Mathf.Max(0f, (p.largo * 1000f - ancho) / 2f) + 2f;
+            // Video a toda la altura, centrado, sin deformar, y los costados del color del borde.
+            float proporcion = (float)tamanoVideo.x / tamanoVideo.y;
+            float alto = p.alto * 1000f, ancho = Mathf.Min(alto * proporcion, p.largo * 1000f);
+            alto = ancho / proporcion;
+            float costado = Mathf.Max(0f, (p.largo * 1000f - ancho) / 2f) + 2f;
             c.costadoIzq = Bloque("Costado izquierdo", cont, PaletaPost.Oscuro);
             Anclar(c.costadoIzq.rectTransform, 0f, 0f, costado);
             c.costadoDer = Bloque("Costado derecho", cont, PaletaPost.Oscuro);
@@ -182,8 +204,10 @@ namespace CuboPost
         void Update()
         {
             var teclado = Keyboard.current;
-            if (teclado != null && teclado.mKey.wasPressedThisFrame) Arrancar();
-            if (estado == Estado.Oculto && Time.time >= proximaVez) Arrancar();
+            // Con la tecla arranca si no hay otro video en pantalla; solo, cuando le toca y el turno
+            // está libre (si no, espera: así nunca se pisan).
+            if (teclado != null && teclado[tecla].wasPressedThisFrame && !todos.Exists(v => v != this && v.estado != Estado.Oculto)) Arrancar();
+            if (estado == Estado.Oculto && Time.time >= proximaVez && !TurnoOcupado()) Arrancar();
 
             float p = Mathf.Clamp01((Time.time - cambio) / segundosBarrido);
             float suave = Mathf.SmoothStep(0f, 1f, p);
@@ -231,6 +255,7 @@ namespace CuboPost
                     {
                         Mostrar(false);
                         estado = Estado.Oculto;
+                        ultimoFinal = Time.time;
                         reproductor.Prepare();   // listo para la próxima vez
                     }
                     break;

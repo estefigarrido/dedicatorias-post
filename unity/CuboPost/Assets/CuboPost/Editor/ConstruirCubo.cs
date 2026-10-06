@@ -112,7 +112,7 @@ namespace CuboPost.EditorTools
         /// r11: video "gente corriendo" en las pantallas largas cada 7 minutos (tecla M).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} r11",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} r12",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera);
 
@@ -511,10 +511,22 @@ namespace CuboPost.EditorTools
                 larga.composicionCentral = true;
                 larga.zonasElipse.Add(new Rect((Ancho - anchoElipse) / 2f, 0f, anchoElipse, AltoPantalla));
             }
-            // Video "gente corriendo" en las dos paredes largas, cada 7 minutos (tecla M para probar).
-            var video = new GameObject("Video en las pantallas largas (cada 7 min, tecla M)").AddComponent<VideoPantallas>();
+            // Videos (no se pisan nunca: si a uno le toca mientras el otro está, espera):
+            //   · "gente corriendo" en las dos paredes largas: a los 7 min y cada 7 min (tecla M);
+            //   · animación de la insignia en la pared oeste (la lateral sin puertas): a los 2:30 y
+            //     cada 5 min (tecla I), intercalada con la otra.
+            var video = new GameObject("Video gente corriendo · paredes largas (cada 7 min, tecla M)").AddComponent<VideoPantallas>();
             video.transform.SetParent(cubo, false);
             video.paredes = new[] { frente, fondo };
+            var insignia = new GameObject("Video insignia · pared oeste (cada 5 min, tecla I)").AddComponent<VideoPantallas>();
+            insignia.transform.SetParent(cubo, false);
+            insignia.paredes = new[] { izquierda };
+            insignia.archivo = "animacion-insignia.mp4";
+            insignia.tamanoVideo = new Vector2Int(4096, 1484);
+            insignia.primeraVez = 150f;
+            insignia.cadaCuantosSegundos = 300f;
+            insignia.verde = PaletaPost.Oscuro;   // empieza en el negro de la marca
+            insignia.tecla = UnityEngine.InputSystem.Key.I;
 
             // Por ahora las dedicatorias salen solo en la pantalla del frente (la que ve la cámara al
             // abrir). Las demás muestran gráfica y puntos. Para sumar otra, poner true acá.
