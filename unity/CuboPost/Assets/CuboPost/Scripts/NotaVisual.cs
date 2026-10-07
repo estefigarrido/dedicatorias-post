@@ -11,7 +11,7 @@ namespace CuboPost
     ///   └ Cuerpo = vertical, padding 50 / 100 / 150 / 100, gap 50, alto HUG
     ///       ├ "para: …"  JetBrains Mono ExtraBold 64
     ///       └ mensaje    Reddit Sans SemiBold 64
-    /// Relleno del color al 80 %.
+    /// Relleno del color opaco (<see cref="PaletaPost.OpacidadNota"/>).
     /// </summary>
     public class NotaVisual : MonoBehaviour
     {

@@ -67,8 +67,9 @@ namespace CuboPost.EditorTools
         const float DistanciaCamara = 32f;
         // Ancho de la nota más chica (S) en las pantallas; las demás crecen en la misma proporción.
         // Eran 0,70 m: con las pantallas más altas, Estefi pidió todas las notas un 20 % más grandes.
-        // Después, otro 30 % más (1,09 m la S). Y ninguna nota pasa de los 3,80 m de altura desde el piso.
-        const float AnchoNotaS = 0.70f * 1.2f * 1.3f;
+        // Después, otro 30 % más (1,09 m la S), y otro 20 % más (1,31 m la S).
+        // Y ninguna nota pasa de los 3,80 m de altura desde el piso.
+        const float AnchoNotaS = 0.70f * 1.2f * 1.3f * 1.2f;
         const float AlturaMaximaNotas = 3.8f;
         // Ejercicio de respiración (Figma, página "tareas", tarea 5): la carita mide lo que el círculo
         // violeta (Ø 1,47 m) y los anillos crecen en proporción. Centro de la carita, en metros desde
@@ -113,9 +114,10 @@ namespace CuboPost.EditorTools
         /// r10: respiración más grande (tecla R, cada 5 min) y pantalla de espera entre las puertas (tecla E).
         /// r15: secuencia de videos en las paredes largas (gente corriendo, break, break en reversa, cierre).
         /// r11: video "gente corriendo" en las pantallas largas cada 7 minutos (tecla M).
+        /// r16: insignia nueva, con su círculo de entrada y salida sobre transparente y llenando la pared.
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r15",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r16",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera, AlturaMaximaNotas);
 
@@ -524,7 +526,9 @@ namespace CuboPost.EditorTools
             //     corriendo" → "tomemos un break" → el mismo en reversa → "cierre de círculo", que se
             //     cierra sobre la pantalla de post. (su negro puro es transparente);
             //   · animación de la insignia en la pared oeste (la lateral sin puertas): a los 2:30 y
-            //     cada 5 min (tecla I), intercalada con la otra.
+            //     cada 5 min (tecla I), intercalada con la otra. Entra y sale con un círculo crema que
+            //     crece y se achica sobre negro puro: ese negro es transparente, así que el círculo
+            //     aparece sobre la pantalla de post. (en el medio del video no hay negro puro).
             var video = new GameObject("Video gente corriendo · paredes largas (cada 7 min, tecla M)").AddComponent<VideoPantallas>();
             video.transform.SetParent(cubo, false);
             video.paredes = new[] { frente, fondo };
@@ -537,7 +541,9 @@ namespace CuboPost.EditorTools
             insignia.transform.SetParent(cubo, false);
             insignia.paredes = new[] { izquierda };
             insignia.archivo = "animacion-insignia.mp4";
+            insignia.transparente = insignia.archivo;
             insignia.tamanoVideo = new Vector2Int(4096, 1484);
+            insignia.cubrir = true;   // la pared (12,42 × 4,30 m) es apenas más ancha: se recortan ~10 cm arriba y abajo
             insignia.primeraVez = 150f;
             insignia.cadaCuantosSegundos = 300f;
             insignia.verde = PaletaPost.Oscuro;

@@ -34,7 +34,7 @@ namespace CuboPost
         [Tooltip("Si esta pantalla muestra dedicatorias. Apagado: solo gráfica y puntos.")]
         public bool recibeNotas = true;
         [Tooltip("Ancho mínimo de la nota más chica (S), en metros. Las demás crecen en la misma proporción.")]
-        public float anchoMinimoNota = 1.092f;
+        public float anchoMinimoNota = 1.3104f;
         [Tooltip("Segundos que cada nota queda visible con opacidad completa.")]
         public float segundosVisible = 15f;
         [Tooltip("Duración de la aparición (opacidad 0 → 100 %) y de la desaparición (100 → 0 %).")]
@@ -50,10 +50,8 @@ namespace CuboPost
         public List<Rect> zonasElipse = new List<Rect>();
 
         [Header("Puntos POST dispersos (componente \"Punto\" del Figma)")]
-        [Tooltip("Puntos y estrellas detrás de las notas, por metro de pantalla.")]
+        [Tooltip("Puntos y estrellas detrás de las notas, por metro de pantalla. Ninguno pasa por delante de una nota.")]
         public float puntosPorMetro = 2.6f;
-        [Tooltip("Puntos chicos que flotan por delante de las notas, por metro de pantalla.")]
-        public float puntosAdelantePorMetro = 0.3f;
         [Tooltip("De cada 100 puntos de atrás, cuántos son estrellas.")]
         [Range(0f, 100f)] public float porcentajeEstrellas = 12f;
 
@@ -87,7 +85,7 @@ namespace CuboPost
 
         const float Separacion = 70f;
         const string NombreLienzo = "Pantalla (canvas)";
-        RectTransform lienzo, capaDecoAtras, capaNotas, capaDecoAdelante;
+        RectTransform lienzo, capaDecoAtras, capaNotas;
         readonly List<NotaVisual> notas = new List<NotaVisual>();
         readonly Dictionary<NotaVisual, Vector2> destinos = new Dictionary<NotaVisual, Vector2>();
         readonly Dictionary<NotaVisual, Coroutine> ciclos = new Dictionary<NotaVisual, Coroutine>();
@@ -155,16 +153,14 @@ namespace CuboPost
 
             capaDecoAtras = Capa("Puntos atrás");
             var capaComposicion = Capa("Gráfica post.");
-            capaNotas = Capa("Notas");
-            capaDecoAdelante = Capa("Puntos adelante");
+            capaNotas = Capa("Notas");   // última capa: nada se dibuja encima de las notas
 
             // Misma disposición cada vez (por pantalla), así la vista previa coincide con el Play.
             var azar = UnityEngine.Random.state;
             UnityEngine.Random.InitState(Semilla());
             puntosPuestos.Clear();
             if (composicionCentral) CrearComposicion(capaComposicion);
-            CrearPuntos(capaDecoAtras, Mathf.RoundToInt(puntosPorMetro * largo), false);
-            CrearPuntos(capaDecoAdelante, Mathf.RoundToInt(puntosAdelantePorMetro * largo), true);
+            CrearPuntos(capaDecoAtras, Mathf.RoundToInt(puntosPorMetro * largo));
             UnityEngine.Random.state = azar;
         }
 
@@ -391,14 +387,13 @@ namespace CuboPost
         /// <summary>
         /// Dispersa círculos (S, M, L en sus 5 variantes) y estrellas (12 y 7 puntas) por la pantalla,
         /// al tamaño que tienen en el Figma. No entran en las zonas bloqueadas ni se enciman.
-        /// soloChicos: solo círculos S y M (los que flotan por delante de las notas).
         /// </summary>
-        void CrearPuntos(RectTransform capa, int cantidad, bool soloChicos)
+        void CrearPuntos(RectTransform capa, int cantidad)
         {
             float k = PxFigma;
             for (int i = 0; i < cantidad; i++)
             {
-                if (!soloChicos && UnityEngine.Random.value * 100f < porcentajeEstrellas)
+                if (UnityEngine.Random.value * 100f < porcentajeEstrellas)
                 {
                     int e = UnityEngine.Random.Range(0, 3);
                     var tex = e == 0 ? RecursosPost.Estrella12Crema : e == 1 ? RecursosPost.Estrella12Verde : RecursosPost.Estrella7Verde;
@@ -409,7 +404,7 @@ namespace CuboPost
                 {
                     // Más chicos que grandes: S 45 %, M 35 %, L 20 %.
                     float dado = UnityEngine.Random.value;
-                    int tamano = soloChicos ? (dado < 0.6f ? 0 : 1) : (dado < 0.45f ? 0 : dado < 0.8f ? 1 : 2);
+                    int tamano = dado < 0.45f ? 0 : dado < 0.8f ? 1 : 2;
                     float diametro = DiametrosPunto[tamano];
                     Punto(capa, TexturaPunto(UnityEngine.Random.Range(0, 5), diametro), diametro * k, false);
                 }

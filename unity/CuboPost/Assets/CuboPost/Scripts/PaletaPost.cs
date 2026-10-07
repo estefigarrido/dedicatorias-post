@@ -18,8 +18,9 @@ namespace CuboPost
         public static readonly Color NotaRosa = Hex("#f79ee1");
         public static readonly Color NotaCrema = Hex("#ede8db");
 
-        /// <summary>Opacidad del relleno de las notas (en el Figma es 80 %).</summary>
-        public const float OpacidadNota = 0.8f;
+        /// <summary>Opacidad del relleno de las notas. En el Figma es 80 %, pero en las pantallas se
+        /// veían los puntos de atrás a través de la nota: Estefi las pidió al 100 %.</summary>
+        public const float OpacidadNota = 1f;
 
         public static Color Hex(string hex)
         {

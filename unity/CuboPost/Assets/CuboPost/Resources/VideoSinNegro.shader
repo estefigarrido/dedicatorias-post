@@ -1,5 +1,6 @@
-// Video para la UI que vuelve transparente el negro puro (#000). Lo usa "cierre de círculo": el
-// círculo #252525 se cierra sobre negro puro, y ese negro deja ver la pantalla de post. de atrás.
+// Video para la UI que vuelve transparente el negro puro (#000). Lo usan "cierre de círculo" (el
+// círculo #252525 se cierra sobre negro puro) y la insignia (su círculo crema entra y sale sobre
+// negro puro): ese negro deja ver la pantalla de post. de atrás.
 // Respeta los recortes de la UI (RectMask2D). Está en Resources para que se incluya en el build.
 Shader "CuboPost/VideoSinNegro"
 {
