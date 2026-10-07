@@ -86,10 +86,11 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
 - **Pantalla de espera** (tecla **E**): entre las dos puertas del lado este (4,4 × 4,1 m). "La siguiente clase comienza
   en: N min" (las clases arrancan cada 20 minutos del reloj), con anillos verdes que se abren desde el centro y un
   puntito que gira. Entra creciendo, queda 30 s y se va achicándose. Código: `Scripts/PantallaEspera.cs`.
-- **Video en las pantallas largas** (frente y fondo), cada 7 minutos o con la tecla **M**: un barrido verde entra de
-  izquierda a derecha en 2 s, se pasa `StreamingAssets/gente-corriendo.mp4` (3:1, a toda la altura y centrado; los
-  costados toman el color del borde del video) y al terminar el negro de la marca se retira con otro barrido y vuelve
-  la pantalla de post. Código: `Scripts/VideoPantallas.cs`.
+- **Videos en las pantallas largas** (frente y fondo), cada 7 minutos o con la tecla **M**: un barrido verde entra de
+  izquierda a derecha en 2 s y se pasan seguidos `gente-corriendo.mp4`, `tomemos-un-break.mp4`, el mismo en reversa
+  (`tomemos-un-break-reversa.mp4`, armado a partir del original) y `cierre-de-circulo.mp4`. En el cierre el negro puro
+  es transparente (shader `Resources/VideoSinNegro.shader`): el círculo se cierra sobre la pantalla de post. de siempre.
+  Los videos llenan la pantalla (recortan apenas arriba y abajo). Código: `Scripts/VideoPantallas.cs`.
 - **Animación de la insignia** en la pantalla oeste (la lateral sin puertas), a los 2:30 y después cada 5 minutos, o
   con la tecla **I**: aparece y se va directo, sin barrido (`StreamingAssets/animacion-insignia.mp4`). Los dos videos no se pisan nunca: si a uno le toca mientras el otro está
   en pantalla, espera a que termine y deja 20 s de separación.

@@ -1,4 +1,4 @@
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Globalization;
 using UnityEditor;
 using UnityEditor.SceneManagement;
@@ -111,10 +111,11 @@ namespace CuboPost.EditorTools
         /// r8: visitante de 1,75 m para recorrer la escena con W A S D, fila con figuras y colisiones.
         /// r9: ejercicio de respiración junto a la entrada (tecla E) y notas un 20 % más grandes.
         /// r10: respiración más grande (tecla R, cada 5 min) y pantalla de espera entre las puertas (tecla E).
+        /// r15: secuencia de videos en las paredes largas (gente corriendo, break, break en reversa, cierre).
         /// r11: video "gente corriendo" en las pantallas largas cada 7 minutos (tecla M).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r14",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r15",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera, AlturaMaximaNotas);
 
@@ -519,12 +520,19 @@ namespace CuboPost.EditorTools
                 larga.zonasElipse.Add(new Rect((Ancho - anchoElipse) / 2f, 0f, anchoElipse, AltoPantalla));
             }
             // Videos (no se pisan nunca: si a uno le toca mientras el otro está, espera):
-            //   · "gente corriendo" en las dos paredes largas: a los 7 min y cada 7 min (tecla M);
+            //   · en las dos paredes largas, a los 7 min y cada 7 min (tecla M): barrido verde → "gente
+            //     corriendo" → "tomemos un break" → el mismo en reversa → "cierre de círculo", que se
+            //     cierra sobre la pantalla de post. (su negro puro es transparente);
             //   · animación de la insignia en la pared oeste (la lateral sin puertas): a los 2:30 y
             //     cada 5 min (tecla I), intercalada con la otra.
             var video = new GameObject("Video gente corriendo · paredes largas (cada 7 min, tecla M)").AddComponent<VideoPantallas>();
             video.transform.SetParent(cubo, false);
             video.paredes = new[] { frente, fondo };
+            video.archivo = "gente-corriendo.mp4";
+            video.siguientes = new[] { "tomemos-un-break.mp4", "tomemos-un-break-reversa.mp4", "cierre-de-circulo.mp4" };
+            video.transparente = "cierre-de-circulo.mp4";
+            video.tamanoVideo = new Vector2Int(4096, 858);
+            video.cubrir = true;   // llenan las pantallas largas (5:1) recortando apenas arriba y abajo
             var insignia = new GameObject("Video insignia · pared oeste (cada 5 min, tecla I)").AddComponent<VideoPantallas>();
             insignia.transform.SetParent(cubo, false);
             insignia.paredes = new[] { izquierda };
