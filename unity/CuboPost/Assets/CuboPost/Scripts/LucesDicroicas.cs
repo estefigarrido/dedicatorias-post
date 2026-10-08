@@ -17,17 +17,20 @@ namespace CuboPost
         public Color verde = new Color(0.29f, 0.85f, 0.42f);
         public Color violeta = new Color(0.62f, 0.38f, 1f);
         [Tooltip("Brillo del lente encendido.")]
-        public float brilloLente = 4f;
+        public float brilloLente = 14f;
+        [Tooltip("Opacidad del halo que la luz deja en el techo alrededor del artefacto.")]
+        [Range(0f, 1f)] public float halo = 0.55f;
 
         const Key tecla = Key.L;
         Light[] luces;
-        Renderer[] lentes;
+        Renderer[] lentes, halos;
         MaterialPropertyBlock bloque;
 
         void Start()
         {
             luces = GetComponentsInChildren<Light>(true);
             lentes = System.Array.FindAll(GetComponentsInChildren<Renderer>(true), r => r.name == "Lente");
+            halos = System.Array.FindAll(GetComponentsInChildren<Renderer>(true), r => r.name == "Halo");
             bloque = new MaterialPropertyBlock();
             Aplicar();
         }
@@ -52,6 +55,13 @@ namespace CuboPost
                 r.GetPropertyBlock(bloque);
                 bloque.SetColor("_EmissionColor", prendidas ? c * brilloLente : Color.black);
                 bloque.SetColor("_BaseColor", prendidas ? Color.Lerp(c, Color.white, 0.5f) : new Color(0.25f, 0.25f, 0.25f));
+                r.SetPropertyBlock(bloque);
+            }
+            foreach (var r in halos)
+            {
+                r.enabled = prendidas;
+                r.GetPropertyBlock(bloque);
+                bloque.SetColor("_BaseColor", new Color(c.r, c.g, c.b, halo));
                 r.SetPropertyBlock(bloque);
             }
         }

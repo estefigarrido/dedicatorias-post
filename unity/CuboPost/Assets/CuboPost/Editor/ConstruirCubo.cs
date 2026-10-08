@@ -116,9 +116,10 @@ namespace CuboPost.EditorTools
         /// r11: video "gente corriendo" en las pantallas largas cada 7 minutos (tecla M).
         /// r16: insignia nueva, con su círculo de entrada y salida sobre transparente y llenando la pared.
         /// r17: sin cierres provisorios ni puertas del ropero (ahora son parte del interior).
+        /// r18: sin el bloque de colisión de la sala: se puede entrar a la clase.
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r17",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r18",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera, AlturaMaximaNotas);
 
@@ -459,13 +460,8 @@ namespace CuboPost.EditorTools
             foreach (var sz in new[] { -1f, 1f })
                 Caja("Esquinero", estructura, new Vector3(sx * Ancho / 2f, AltoPared / 2f, sz * Profundidad / 2f), new Vector3(0.12f, AltoPared, 0.12f), matEstructura);
 
-            // El interior todavía no está armado: la sala es un bloque macizo para el visitante (las
-            // pantallas no chocan por sí solas). A los pasillos de la franja sí se entra por las puertas.
-            var sala = new GameObject("Sala (colisión · interior pendiente)");
-            sala.transform.SetParent(estructura, false);
-            var bloque = sala.AddComponent<BoxCollider>();
-            bloque.center = new Vector3((oeste + xFranja) / 2f, AltoPared / 2f, 0f);
-            bloque.size = new Vector3(xFranja - oeste, AltoPared, Profundidad);
+            // La sala ya no es un bloque macizo: sus paredes, piso y cortina (con colisión) son parte
+            // del interior ("Interior de la cabina"), así que el visitante entra por los pasillos.
 
             // Pantallas: recorren el perímetro en orden (frente → derecha → fondo → izquierda) para que
             // el degradé pase de una a otra sin cortes. La del lado este es una sola, de punta a punta,
