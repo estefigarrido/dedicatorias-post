@@ -115,9 +115,10 @@ namespace CuboPost.EditorTools
         /// r15: secuencia de videos en las paredes largas (gente corriendo, break, break en reversa, cierre).
         /// r11: video "gente corriendo" en las pantallas largas cada 7 minutos (tecla M).
         /// r16: insignia nueva, con su círculo de entrada y salida sobre transparente y llenando la pared.
+        /// r17: sin cierres provisorios ni puertas del ropero (ahora son parte del interior).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r16",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r17",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera, AlturaMaximaNotas);
 
@@ -563,10 +564,8 @@ namespace CuboPost.EditorTools
             franja.SetParent(cubo, false);
             CajaEntre("Técnico + depósito", franja, xFranja, este - h, 0f, AltoPared, zTecnico, norte - h, matTunel);
             CajaEntre("Ropero", franja, xFranja, este - h, 0f, AltoPared, zRopero, zEntrada, matPuerta);
-            // Puertas del ropero, centradas en el fondo de la franja: una da a la entrada y otra a la salida.
-            float xPuerta = (xFranja + este) / 2f;
-            CajaEntre("Ropero · puerta a la entrada", franja, xPuerta - PuertaRopero / 2f, xPuerta + PuertaRopero / 2f, 0f, AltoPuertaRopero, zEntrada, zEntrada + 0.02f, matPersonas);
-            CajaEntre("Ropero · puerta a la salida", franja, xPuerta - PuertaRopero / 2f, xPuerta + PuertaRopero / 2f, 0f, AltoPuertaRopero, zRopero - 0.02f, zRopero, matPersonas);
+            // Las puertas del ropero, los módulos de pared y las puertas a la sala son parte del interior
+            // ("Interior de la cabina", aparte del cubo).
             Acceso("Entrada", franja, xFranja, este, zEntrada, zTecnico, zPuertaEntrada, matEstructura, matTunel, matPuerta);
             Acceso("Salida", franja, xFranja, este, sur + h, zRopero, zPuertaSalida, matEstructura, matTunel, matPuerta);
             // La salida da contra la pared sur del stand: su cara de adentro (afuera es pantalla).
@@ -605,8 +604,8 @@ namespace CuboPost.EditorTools
         /// Pasillo de entrada o de salida: ocupa su tramo de la franja (de z0 a z1, de x0 a x1) con
         /// <see cref="AltoAcceso"/> de alto libre, detrás de la pantalla del lado este. Hacia afuera
         /// da una sola puerta de <see cref="AnchoPuerta"/> × <see cref="AltoPuerta"/>, centrada en
-        /// <paramref name="zPuerta"/>, con su marco. Al fondo, un cierre oscuro provisorio: se saca
-        /// cuando se arme el interior.
+        /// <paramref name="zPuerta"/>, con su marco. Al fondo da a la sala: esa pared, con su puerta,
+        /// es parte del interior ("Interior de la cabina").
         /// </summary>
         static void Acceso(string nombre, Transform padre, float x0, float x1, float z0, float z1, float zPuerta,
             Material matEstructura, Material matPared, Material matCierre)
@@ -620,7 +619,6 @@ namespace CuboPost.EditorTools
             acceso.SetParent(padre, false);
             CajaEntre("Techo", acceso, x0, xPared, AltoAcceso, AltoPared, z0, z1, matEstructura);
             CajaEntre("Piso", acceso, x0, x1, 0f, 0.02f, z0, z1, matEstructura);
-            CajaEntre("Cierre provisorio (interior pendiente)", acceso, x0 - 0.04f, x0 + 0.01f, 0f, AltoAcceso, z0, z1, matCierre);
             // Pared del frente (la que lleva la pantalla), con el hueco de la puerta.
             CajaEntre("Pared a un lado de la puerta", acceso, xPared - espesor, xPared, 0f, AltoAcceso, z0, p0 - Marco, matPared);
             CajaEntre("Pared al otro lado de la puerta", acceso, xPared - espesor, xPared, 0f, AltoAcceso, p1 + Marco, z1, matPared);
