@@ -63,7 +63,7 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
 
 - **Cubo a escala real**: planta 20 × 10 m, 4 m de alto (3,3 m de pantalla LED desde los 20 cm, hasta los 3,50 m,
   más 0,50 m de coronamiento), entrada de 3 × 2,8 m centrada en el lateral izquierdo, Plaza de la República con
-  el Obelisco de fondo y gente de 1,70 m como escala. Las medidas están al principio de
+  el Obelisco de fondo y personas 3D (Meshy, `Assets/CuboPost/Modelos`) haciendo la fila y sentadas en los pufs. Las medidas están al principio de
   `Assets/CuboPost/Editor/ConstruirCubo.cs`: al cambiarlas, Unity actualiza el cubo de la escena solo
   (o con el menú **post. → Actualizar solo el cubo**), sin tocar la plaza.
 - **Pantallas**: fondo negro de la marca (#252525) con luces leves verde y lila que recorren las 4 paredes sin
