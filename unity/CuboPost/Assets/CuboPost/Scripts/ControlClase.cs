@@ -11,7 +11,7 @@ namespace CuboPost
     ///   · V · calibración: las 8 pantallas individuales de cada pared muestran "Extendé los brazos…"
     ///     2 s y después "¡Calibración lista!", hasta que se toque otro comando. Dicroicas en blanco y
     ///     personas 3D con los brazos estirados (en T).
-    ///   · N · en pareja: dicroicas en verde y personas paradas con los brazos al costado; a los 2 s las
+    ///   · N · en pareja: dicroicas en verde (las personas no cambian); a los 2 s las
     ///     pantallas pasan el video "en pareja" y las dicroicas van de verde a violeta en 1 s. Cuando el
     ///     video termina, vuelve al reposo.
     ///   · La misma tecla otra vez vuelve al reposo.
@@ -137,7 +137,7 @@ namespace CuboPost
                 case Momento.PreparandoPareja:
                     Pantallas(null, Vector2.one);   // las pantallas siguen en reposo estos 2 s
                     Luces(true, verde);
-                    Personas(personasParadas);
+                    Personas(personasReposo);   // en pareja solo cambian las pantallas y las luces: las personas siguen siendo las mismas
                     break;
             }
         }
