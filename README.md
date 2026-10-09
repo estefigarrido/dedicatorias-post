@@ -82,7 +82,9 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   (la carita mide Ø 1,47 m y los anillos hasta Ø 3,58 m; los puntos no cruzan esa zona). Aparece solo cada
   5 minutos o con la tecla **R** (con R de nuevo se corta): entra creciendo, hace 2 respiraciones (5 s de inhalar y
   5 s de exhalar) y se va achicándose. Al inhalar aparece un anillo más grande detrás de la carita cada segundo y al
-  exhalar se va uno por segundo. Código: `Scripts/EjercicioRespiracion.cs`, caritas en `Resources/Respiracion`.
+  exhalar se va uno por segundo. La cuenta ("inhalá 3", "exhalá 2") va arriba de los anillos sin tocarlos, en el
+  estilo de los títulos de post.: Sora Bold en minúscula, violeta #AB8AE5, con una onda subrayando (los puntos de la
+  pantalla no pasan por ahí). Código: `Scripts/EjercicioRespiracion.cs`, caritas en `Resources/Respiracion`.
 - **Pantalla de espera** (tecla **E**): entre las dos puertas del lado este (4,4 × 4,1 m). "La siguiente clase comienza
   en: N min" (las clases arrancan cada 20 minutos del reloj), con anillos verdes que se abren desde el centro y un
   puntito que gira. Entra creciendo, queda 30 s y se va achicándose. Código: `Scripts/PantallaEspera.cs`.

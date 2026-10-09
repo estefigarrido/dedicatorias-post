@@ -119,9 +119,10 @@ namespace CuboPost.EditorTools
         /// r18: sin el bloque de colisión de la sala: se puede entrar a la clase.
         /// r19: visitante de 1,75 m de alto y 0,50 m de ancho (cuerpo y colisión).
         /// r20: la fila de afuera con las personas 3D de Mateo (sin figuras palito).
+        /// r21: sin puntos arriba de la respiración (ahí va la cuenta inhalá / exhalá).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r20",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r21",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera, AlturaMaximaNotas);
 
@@ -488,7 +489,9 @@ namespace CuboPost.EditorTools
             // puntos que flotan no la cruzan.
             float ladoRespiracion = CaraRespiracion * EjercicioRespiracion.DiametroMayor / EjercicioRespiracion.DiametroCara;
             var zonaRespiracion = new Rect(CentroRespiracionX - ladoRespiracion / 2f, CentroRespiracionY - ladoRespiracion / 2f, ladoRespiracion, ladoRespiracion);
-            derecha.zonasBloqueadas.Add(new Rect(zonaRespiracion.x - 0.1f, Mathf.Max(0f, zonaRespiracion.y - 0.1f), zonaRespiracion.width + 0.2f, zonaRespiracion.height + 0.2f));
+            // Bloqueada hasta arriba de la pantalla: la cuenta (inhalá / exhalá) va sobre los anillos.
+            float pisoRespiracion = Mathf.Max(0f, zonaRespiracion.y - 0.1f);
+            derecha.zonasBloqueadas.Add(new Rect(zonaRespiracion.x - 0.1f, pisoRespiracion, zonaRespiracion.width + 0.2f, derecha.alto - pisoRespiracion));
             var respiracion = new GameObject("Ejercicio de respiración (tecla R, cada 5 min)").AddComponent<EjercicioRespiracion>();
             respiracion.transform.SetParent(derecha.transform, false);
             respiracion.zona = zonaRespiracion;

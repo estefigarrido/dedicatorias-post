@@ -48,6 +48,10 @@ namespace CuboPost
         [Tooltip("Lo que tarda en crecer al aparecer y en achicarse al irse.")]
         public float segundosEscala = 0.7f;
 
+        // Leyenda (en mm del lienzo): violeta #AB8AE5 y la onda con el grosor del trazo de la letra.
+        static readonly Color VioletaLeyenda = new Color32(0xAB, 0x8A, 0xE5, 0xFF);
+        const float TamanoLeyenda = 260f, GrosorOnda = 34f, AmplitudOnda = 22f, LargoOndaPeriodo = 165f;
+
         const string NombreLienzo = "Respiración (canvas)";
         const float MetrosPorUnidad = 0.001f;   // 1 unidad del lienzo = 1 mm
 
@@ -58,7 +62,7 @@ namespace CuboPost
         float[] presencia;
         RawImage caraInhalando, caraExhalando;
         TextMeshProUGUI leyenda;
-        GameObject fondoLeyenda;
+        GameObject ondaLeyenda;
         Estado estado;
         float inicio, cambio, proximaVez, mezclaCara;
 
@@ -108,30 +112,28 @@ namespace CuboPost
             caraExhalando = Imagen("Exhalando", Resources.Load<Texture2D>("Respiracion/cara-exhalando"), Vector2.zero, DiametroCara * k, cara);
             caraInhalando = Imagen("Inhalando", Resources.Load<Texture2D>("Respiracion/cara-inhalando"), Vector2.zero, DiametroCara * k, cara);
 
-            // Cuenta (INHALÁ 3 / EXHALÁ 2) debajo de la carita, sobre una banda oscura para que se lea
-            // aunque pase por encima de los anillos.
-            float yLeyenda = -(DiametroCara * k / 2f + 190f);
-            fondoLeyenda = Nuevo("Fondo de la cuenta", typeof(RectTransform), typeof(Image));
-            var fondo = (RectTransform)fondoLeyenda.transform;
-            fondo.SetParent(visual, false);
-            fondo.anchoredPosition = new Vector2(0f, yLeyenda);
-            fondo.sizeDelta = new Vector2(820f, 190f);
-            var img = fondoLeyenda.GetComponent<Image>();
-            img.color = new Color(PaletaPost.Oscuro.r, PaletaPost.Oscuro.g, PaletaPost.Oscuro.b, 0.85f);
-            img.raycastTarget = false;
+            // Cuenta (inhalá 3 / exhalá 2) arriba de los anillos, sin tocarlos: en el estilo de los
+            // títulos de post. ("cuerpo"): Sora Bold en minúscula, violeta, con una onda subrayando.
             var t = Nuevo("Cuenta", typeof(RectTransform), typeof(TextMeshProUGUI));
             var rt = (RectTransform)t.transform;
             rt.SetParent(visual, false);
-            rt.anchoredPosition = new Vector2(0f, yLeyenda);
-            rt.sizeDelta = new Vector2(820f, 190f);
             leyenda = t.GetComponent<TextMeshProUGUI>();
-            leyenda.font = RecursosPost.FuenteMono;
-            leyenda.fontSize = 100f;
-            leyenda.characterSpacing = 4f;
-            leyenda.alignment = TextAlignmentOptions.Center;
+            leyenda.font = RecursosPost.FuenteTitulo;
+            leyenda.fontSize = TamanoLeyenda;
+            leyenda.alignment = TextAlignmentOptions.Bottom;
             leyenda.textWrappingMode = TextWrappingModes.NoWrap;
-            leyenda.color = PaletaPost.Crema;
+            leyenda.color = VioletaLeyenda;
             leyenda.raycastTarget = false;
+
+            float ancho = leyenda.GetPreferredValues("exhalá 5").x;
+            float altoOnda = 2f * AmplitudOnda + GrosorOnda;
+            float yOnda = diametro / 2f + 60f + altoOnda / 2f;   // 6 cm sobre el anillo más grande
+            var onda = Imagen("Onda", Onda(Mathf.CeilToInt(ancho), Mathf.CeilToInt(altoOnda)), new Vector2(0f, yOnda), 1f, visual);
+            onda.rectTransform.sizeDelta = new Vector2(Mathf.Ceil(ancho), Mathf.Ceil(altoOnda));
+            onda.color = VioletaLeyenda;
+            ondaLeyenda = onda.gameObject;
+            rt.sizeDelta = new Vector2(ancho + 200f, TamanoLeyenda * 1.3f);
+            rt.anchoredPosition = new Vector2(0f, yOnda + altoOnda / 2f + 10f + rt.sizeDelta.y / 2f);
 
             estado = Estado.Oculto;
             visual.localScale = Vector3.zero;
@@ -171,7 +173,7 @@ namespace CuboPost
             lienzo = null;
         }
 
-        static Texture2D discoDifuminado;
+        static Texture2D discoDifuminado, onda;
 
         /// <summary>0 → 1 → 0: dos golpes cortos por latido (el segundo más suave), 0,92 s por latido.</summary>
         static float Latido(float tiempo)
@@ -199,6 +201,38 @@ namespace CuboPost
             t.SetPixels32(px);
             t.Apply(true);
             return discoDifuminado = t;
+        }
+
+        /// <summary>
+        /// Onda blanca (se tiñe con el color de la imagen) de ancho × alto px, 1 px = 1 mm: una senoide de
+        /// trazo parejo con puntas redondas, con una cantidad entera de períodos.
+        /// </summary>
+        static Texture2D Onda(int ancho, int alto)
+        {
+            if (onda != null && onda.width == ancho && onda.height == alto) return onda;
+            var t = onda = new Texture2D(ancho, alto, TextureFormat.RGBA32, true) { wrapMode = TextureWrapMode.Clamp, filterMode = FilterMode.Trilinear, name = "Onda de la cuenta" };
+            float r = GrosorOnda / 2f, a = AmplitudOnda, c = alto / 2f;
+            float largo = ancho - 2f * r;
+            float periodos = Mathf.Max(1f, Mathf.Round(largo / LargoOndaPeriodo));
+            float w = periodos * 2f * Mathf.PI / largo;
+            float Y(float x) => c + a * Mathf.Sin(w * (Mathf.Clamp(x, r, ancho - r) - r));
+            var px = new Color32[ancho * alto];
+            for (int x = 0; x < ancho; x++)
+            for (int y = 0; y < alto; y++)
+            {
+                // Distancia al trazo: el punto más cercano de la curva, buscado en un entorno de ±r.
+                float d = float.MaxValue;
+                for (float s = x - r - 1f; s <= x + r + 1f; s += 1f)
+                {
+                    float sx = Mathf.Clamp(s, r, ancho - r);
+                    d = Mathf.Min(d, Vector2.Distance(new Vector2(x + 0.5f, y + 0.5f), new Vector2(sx, Y(sx))));
+                }
+                float alfa = Mathf.Clamp01(r - d + 0.5f);
+                px[y * ancho + x] = new Color32(255, 255, 255, (byte)(alfa * 255));
+            }
+            t.SetPixels32(px);
+            t.Apply(true);
+            return t;
         }
 
         /// <summary>Objeto nuevo. Fuera de Play es solo vista previa: no se guarda en la escena.</summary>
@@ -284,10 +318,10 @@ namespace CuboPost
                 int paso = Mathf.Min(n - 1, Mathf.FloorToInt(avance * n));
                 visibles = inhalando ? paso : n - paso;
                 float restan = inhalando ? segundosInhalar - fase : segundosInhalar + segundosExhalar - fase;
-                leyenda.text = (inhalando ? "INHALÁ  " : "EXHALÁ  ") + Mathf.CeilToInt(restan);
+                leyenda.text = (inhalando ? "inhalá " : "exhalá ") + Mathf.CeilToInt(restan);
             }
             else leyenda.text = "";
-            fondoLeyenda.SetActive(leyenda.text.Length > 0);
+            ondaLeyenda.SetActive(leyenda.text.Length > 0);
 
             float paso01 = inmediato ? 1f : dt / Mathf.Max(0.01f, segundosAnillo);
             for (int i = 0; i < n; i++)
