@@ -118,9 +118,10 @@ namespace CuboPost.EditorTools
         /// r17: sin cierres provisorios ni puertas del ropero (ahora son parte del interior).
         /// r18: sin el bloque de colisión de la sala: se puede entrar a la clase.
         /// r19: visitante de 1,75 m de alto y 0,50 m de ancho (cuerpo y colisión).
+        /// r20: la fila de afuera con las personas 3D de Mateo (sin figuras palito).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r19",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r20",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera, AlturaMaximaNotas);
 
@@ -568,30 +569,31 @@ namespace CuboPost.EditorTools
             // La salida da contra la pared sur del stand: su cara de adentro (afuera es pantalla).
             CajaEntre("Salida · pared sur", franja, xFranja, este - h, 0f, AltoAcceso, sur + h, sur + 0.1f, matTunel);
 
-            // Gente haciendo la fila: figuras como las de la plaza, de distintas alturas, mirando hacia
-            // la puerta de entrada. La fila sale derecho hacia el este y deja libre el paso a la puerta.
+            // Gente haciendo la fila: las personas 3D de Mateo (Modelos/*.prefab), mirando hacia la puerta
+            // de entrada. La fila sale derecho hacia el este y deja libre el paso a la puerta.
             var fila = new GameObject("Fila").transform;
             fila.SetParent(cubo, false);
-            var mallaFigura = Guardar(ConstruirEntorno.MallaDeFigura(AlturaFigura), "Figura de pie.asset");
-            var tonos = new[] { Mat("Figura clara", "#d6d0c2", 0.15f), Mat("Figura media", "#bab3a6", 0.15f), Mat("Figura oscura", "#9d978d", 0.15f) };
-            float[] alturas = { 1.68f, 1.76f, 1.6f, 1.82f, 1.71f, 1.57f, 1.78f };
-            float[] giros = { -6f, 9f, -3f, 14f, 0f, -12f, 5f };
-            int[] tono = { 0, 2, 1, 0, 1, 2, 0 };
-            for (int i = 0; i < alturas.Length; i++)
+            string[] enFila = { "estudio", "hombro", "pose", "lista para moverse", "atleta", "estirando", "hombre atletico" };
+            float[] escalas = { 0.93f, 0.84f, 0.96f, 0.90f, 0.83f, 0.94f, 0.89f };
+            float[] giros = { 9f, -3f, 14f, 0f, -12f, 5f, -8f };
+            for (int i = 0; i < enFila.Length; i++)
             {
-                var p = new GameObject("Persona", typeof(MeshFilter), typeof(MeshRenderer));
-                p.transform.SetParent(fila, false);
+                var prefab = AssetDatabase.LoadAssetAtPath<GameObject>("Assets/CuboPost/Modelos/Persona " + enFila[i] + ".prefab");
+                if (prefab == null) continue;
+                var p = (GameObject)PrefabUtility.InstantiatePrefab(prefab, fila);
+                p.name = "Persona " + enFila[i] + " (fila)";
                 p.transform.SetPositionAndRotation(
-                    new Vector3(este + 1.3f + i * 0.75f, 0f, zPuertaEntrada - 0.06f + (i % 2) * 0.12f),
+                    new Vector3(este + 0.8f + i * 0.85f, 0f, zPuertaEntrada - 0.01f + (i % 2) * 0.12f),
                     Quaternion.Euler(0f, -90f + giros[i], 0f));   // -90° = mirando al oeste, hacia la puerta
-                p.transform.localScale = Vector3.one * (alturas[i] / AlturaFigura);
-                p.GetComponent<MeshFilter>().sharedMesh = mallaFigura;
-                p.GetComponent<MeshRenderer>().sharedMaterial = tonos[tono[i]];
-                var cuerpo = p.AddComponent<CapsuleCollider>();
-                cuerpo.direction = 1;   // eje vertical
-                cuerpo.radius = 0.22f;
-                cuerpo.height = AlturaFigura;
-                cuerpo.center = new Vector3(0f, AlturaFigura / 2f, 0f);
+                p.transform.localScale = Vector3.one * escalas[i];
+                if (p.GetComponent<Collider>() == null)
+                {
+                    var cuerpo = p.AddComponent<CapsuleCollider>();
+                    cuerpo.direction = 1;   // eje vertical
+                    cuerpo.radius = 0.25f;
+                    cuerpo.height = 1.9f;
+                    cuerpo.center = new Vector3(0f, 0.95f, 0f);
+                }
             }
 
             return paredes;

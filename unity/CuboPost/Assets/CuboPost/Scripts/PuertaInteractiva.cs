@@ -76,12 +76,15 @@ namespace CuboPost
         {
             if (si == resaltada || partes == null) return;
             resaltada = si;
+            // Se tiñe apenas de verde con un bloque de propiedades: el material de la puerta no se toca.
             foreach (var r in partes)
             {
+                var m = r.sharedMaterial;
+                if (m == null || !m.HasProperty("_BaseColor")) continue;
+                var original = m.GetColor("_BaseColor");
                 r.GetPropertyBlock(bloque);
-                bloque.SetColor("_EmissionColor", si ? new Color(0.29f, 0.72f, 0.4f) * 0.35f : Color.black);
+                bloque.SetColor("_BaseColor", si ? Color.Lerp(original, new Color(0.29f, 0.85f, 0.42f), 0.45f) : original);
                 r.SetPropertyBlock(bloque);
-                foreach (var m in r.sharedMaterials) if (m != null && si) m.EnableKeyword("_EMISSION");
             }
         }
     }
