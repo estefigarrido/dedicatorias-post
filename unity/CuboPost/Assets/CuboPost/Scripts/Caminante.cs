@@ -1,4 +1,4 @@
-﻿using UnityEngine;
+using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Rendering;
 
@@ -7,7 +7,7 @@ namespace CuboPost
     /// <summary>
     /// Visitante: la persona con la que se recorre la escena en Play.
     ///   W A S D (o las flechas) = caminar · Espacio = saltar (0,5 m) · mouse = mirar · Shift = correr
-    ///   C = ver al personaje desde atrás / volver a sus ojos
+    ///   X = ver al personaje desde atrás / volver a sus ojos
     ///   Tab = pasar a la vista general (la cámara que gira alrededor del stand) y volver
     ///   Esc = soltar el mouse · clic = volver a tomarlo
     /// La cámara va a la altura de los ojos de una persona de 1,75 m (1,63 m sobre el piso).
@@ -41,7 +41,7 @@ namespace CuboPost
         [Header("Vista")]
         public Camera camara;
         public CamaraOrbita orbita;
-        [Tooltip("Ver al personaje desde atrás en vez de desde sus ojos (tecla C; la V es la calibración de la clase).")]
+        [Tooltip("Ver al personaje desde atrás en vez de desde sus ojos (tecla X; la V es la calibración y la C la música de la clase).")]
         public bool terceraPersona;
         public float distanciaTercera = 3.2f;
         [Tooltip("Campo visual de la cámara mientras se camina.")]
@@ -126,7 +126,7 @@ namespace CuboPost
             if (teclado != null)
             {
                 if (teclado.tabKey.wasPressedThisFrame) Modo(!caminando);
-                if (caminando && teclado.cKey.wasPressedThisFrame)
+                if (caminando && teclado.xKey.wasPressedThisFrame)
                 {
                     terceraPersona = !terceraPersona;
                     MostrarCuerpo();
@@ -286,7 +286,7 @@ namespace CuboPost
             bool tomado = Cursor.lockState == CursorLockMode.Locked;
             if (Time.unscaledTime > ayudaHasta && (tomado || !caminando)) return;
             string texto = !caminando ? "Tab: recorrer caminando"
-                : tomado ? "W A S D caminar · Espacio saltar · mouse mirar · Shift correr · C ver al personaje · Tab vista general · Esc soltar el mouse"
+                : tomado ? "W A S D caminar · Espacio saltar · mouse mirar · Shift correr · X ver al personaje · Tab vista general · Esc soltar el mouse"
                 : "Clic para mirar con el mouse · W A S D caminar · Tab vista general";
             if (estilo == null) estilo = new GUIStyle(GUI.skin.label) { fontSize = 15 };
             var lugar = new Rect(18f, Screen.height - 44f, Screen.width - 36f, 30f);

@@ -111,6 +111,9 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   - La misma tecla otra vez vuelve a reposo.
   - Las personas en pose T para la V todavía no están (las sube Mateo). Cuando estén, se arrastra el grupo al
     campo `personasEnT`; mientras tanto quedan las de siempre.
+- **Música de la clase** (tecla **C**, `Scripts/MusicaClase.cs`): 20 minutos de música en loop
+  (`Audio/Musica de la clase.ogg`, se lee del disco). Entra con un fade in de 5 s. Con la C otra vez se baja
+  en 1,5 s y se corta. Al caminar, ver al personaje desde atrás pasó a la tecla **X**.
 - **Dicroicas** (`Scripts/LucesDicroicas.cs`): 16 en la sala y 4 en los pasillos. La tecla **L** las pasa a mano por
   blanco, verde y violeta.
 - **Puertas** (`Scripts/PuertaInteractiva.cs`): se apuntan con el mouse y se abren o cierran con la **P**. Si el cursor
