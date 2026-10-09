@@ -122,6 +122,9 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   está tomado al caminar, vale la del centro de la vista, a menos de 4 m. La puerta apuntada se ilumina apenas.
 - **Cámara**: arrastrar para girar · rueda para acercar · 1-4 cada pared a la altura de la fila · 0 vista general · G giro automático.
 - **Reconstruir la escena** (si se cambian medidas en el código): menú **post. → Construir escena del cubo**.
+- **Empaquetar para Windows** (un .exe que se abre sin Unity): menú **post. → Empaquetar para Windows**, o con
+  Unity cerrado `Unity.exe -batchmode -quit -projectPath unity/CuboPost -executeMethod CuboPost.EditorTools.EmpaquetarWindows.Empaquetar`.
+  Queda en `unity/CuboPost/Builds/post-cubo` (no se sube al repo).
 
 Código en `Assets/CuboPost/Scripts` (notas, pantallas, Supabase, cámara), el shader del fondo en
 `Assets/CuboPost/Shaders` y el constructor de la escena en `Assets/CuboPost/Editor/ConstruirCubo.cs`.
