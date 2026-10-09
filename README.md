@@ -105,6 +105,9 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   - **N · en pareja**: dicroicas en verde y las personas de la zona de stretching paradas con los brazos al
     costado. A los 2 s las pantallas pasan `StreamingAssets/en-pareja.mp4` y las dicroicas van de verde a
     violeta en 1 s. Al terminar el video, vuelve a reposo.
+  - **B · estirando hombro**: dicroicas en verde y, en cada una de las 8 pantallas de cada pared, el video de Lucas
+    (`StreamingAssets/estirando-hombro.mp4`) del segundo 9 al 14, en loop hasta que se toca otro comando.
+    Las personas 3D no cambian.
   - La misma tecla otra vez vuelve a reposo.
   - Las personas en pose T para la V todavía no están (las sube Mateo). Cuando estén, se arrastra el grupo al
     campo `personasEnT`; mientras tanto quedan las de siempre.

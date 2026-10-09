@@ -1,4 +1,4 @@
-using System.IO;
+﻿using System.IO;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.Video;
@@ -14,6 +14,8 @@ namespace CuboPost
     ///   · N · en pareja: dicroicas en verde (las personas no cambian); a los 2 s las
     ///     pantallas pasan el video "en pareja" y las dicroicas van de verde a violeta en 1 s. Cuando el
     ///     video termina, vuelve al reposo.
+    ///   · B · estirando hombro: dicroicas en verde y en cada pantalla individual el video de Lucas, del
+    ///     segundo 9 al 14, en loop hasta que se toque otro comando (las personas no cambian).
     ///   · La misma tecla otra vez vuelve al reposo.
     ///   · Reposo (sin comando): pantallas en negro con los vectores flotando, luces apagadas y las
     ///     personas de siempre en la zona de stretching.
@@ -21,7 +23,7 @@ namespace CuboPost
     /// </summary>
     public class ControlClase : MonoBehaviour
     {
-        enum Momento { Reposo, Calibracion, PreparandoPareja, Pareja }
+        enum Momento { Reposo, Calibracion, PreparandoPareja, Pareja, Hombro }
 
         [Header("Pantallas (las dos paredes largas de la sala)")]
         public Renderer[] pantallas;                 // las 8 pantallas individuales de cada pared (un quad)
@@ -34,6 +36,11 @@ namespace CuboPost
         public Vector2Int tamanoVideo = new Vector2Int(4096, 1732);
         public float segundosAntesDelVideo = 2f;
         public float segundosVerdeAVioleta = 1f;
+        [Tooltip("Video de StreamingAssets: una sola pantalla individual (1080 × 1824); se repite en las 8 de cada pared.")]
+        public string videoHombro = "estirando-hombro.mp4";
+        public Vector2Int tamanoVideoHombro = new Vector2Int(1080, 1824);
+        [Tooltip("Tramo del video que se pasa en loop, en segundos.")]
+        public float inicioHombro = 9f, finHombro = 14f;
 
         [Header("Dicroicas (las mismas de la tecla L)")]
         public LucesDicroicas dicroicas;
@@ -51,8 +58,10 @@ namespace CuboPost
         Momento momento;
         float desde;
         bool videoTermino;
-        VideoPlayer reproductor;
-        RenderTexture texturaVideo;
+        VideoPlayer reproductor, reproductorHombro;
+        RenderTexture texturaVideo, texturaHombro;
+        bool buscando;
+        float buscandoDesde;
         Material[] materiales;
 
         void Start()
@@ -60,27 +69,38 @@ namespace CuboPost
             materiales = new Material[pantallas.Length];
             for (int i = 0; i < pantallas.Length; i++) materiales[i] = pantallas[i].material;   // copia propia
 
-            texturaVideo = new RenderTexture(tamanoVideo.x, tamanoVideo.y, 0) { name = "Video en pareja", wrapMode = TextureWrapMode.Repeat };
-            reproductor = gameObject.AddComponent<VideoPlayer>();
-            reproductor.playOnAwake = false;
-            reproductor.isLooping = false;
-            reproductor.source = VideoSource.Url;
-            reproductor.url = Path.Combine(Application.streamingAssetsPath, videoPareja);
-            reproductor.renderMode = VideoRenderMode.RenderTexture;
-            reproductor.targetTexture = texturaVideo;
-            reproductor.audioOutputMode = VideoAudioOutputMode.None;
-            reproductor.skipOnDrop = true;
+            reproductor = Reproductor(videoPareja, tamanoVideo, "Video en pareja", false, out texturaVideo);
             reproductor.loopPointReached += Termino;
-            reproductor.Prepare();   // listo de antemano: arranca justo a los 2 s
+            reproductorHombro = Reproductor(videoHombro, tamanoVideoHombro, "Video estirando hombro", true, out texturaHombro);
+            reproductorHombro.seekCompleted += Salto;
 
             Ir(Momento.Reposo);
         }
 
+        /// <summary>Un VideoPlayer de StreamingAssets que dibuja en su propia textura, preparado de antemano.</summary>
+        VideoPlayer Reproductor(string archivo, Vector2Int tamano, string nombre, bool loop, out RenderTexture textura)
+        {
+            textura = new RenderTexture(tamano.x, tamano.y, 0) { name = nombre, wrapMode = TextureWrapMode.Repeat };
+            var r = gameObject.AddComponent<VideoPlayer>();
+            r.playOnAwake = false;
+            r.isLooping = loop;
+            r.source = VideoSource.Url;
+            r.url = Path.Combine(Application.streamingAssetsPath, archivo);
+            r.renderMode = VideoRenderMode.RenderTexture;
+            r.targetTexture = textura;
+            r.audioOutputMode = VideoAudioOutputMode.None;
+            r.skipOnDrop = true;
+            r.Prepare();   // listo de antemano: arranca sin demora
+            return r;
+        }
+
         void Termino(VideoPlayer _) => videoTermino = true;
+        void Salto(VideoPlayer _) => buscando = false;
 
         void OnDestroy()
         {
             if (texturaVideo != null) texturaVideo.Release();
+            if (texturaHombro != null) texturaHombro.Release();
         }
 
         void Update()
@@ -90,6 +110,7 @@ namespace CuboPost
             {
                 if (teclado.vKey.wasPressedThisFrame) Ir(momento == Momento.Calibracion ? Momento.Reposo : Momento.Calibracion);
                 if (teclado.nKey.wasPressedThisFrame) Ir(momento == Momento.PreparandoPareja || momento == Momento.Pareja ? Momento.Reposo : Momento.PreparandoPareja);
+                if (teclado.bKey.wasPressedThisFrame) Ir(momento == Momento.Hombro ? Momento.Reposo : Momento.Hombro);
             }
 
             float t = Time.time - desde;
@@ -114,7 +135,32 @@ namespace CuboPost
                     if (reproductor.frame > 0) Pantallas(texturaVideo, new Vector2(2f, 1f));
                     if (videoTermino) Ir(Momento.Reposo);
                     break;
+                case Momento.Hombro:
+                    Hombro();
+                    break;
             }
+        }
+
+        /// <summary>Pasa solo el tramo inicioHombro–finHombro, en loop: al llegar al final vuelve al inicio.</summary>
+        void Hombro()
+        {
+            var r = reproductorHombro;
+            if (buscando && Time.time - buscandoDesde > 1.5f) buscando = false;   // por si el aviso del salto no llega
+            if (!r.isPrepared || buscando) return;   // mientras salta al segundo 9, se espera
+            if (!r.isPlaying) { r.Play(); Saltar(); return; }
+            if (r.frame < 0) return;
+            double t = r.time;
+            // Al final del tramo se reinicia (saltar hacia atrás con el video andando no siempre responde).
+            if (t >= finHombro || t < inicioHombro - 0.25) { r.Stop(); r.Play(); Saltar(); return; }
+            // Recién cuando el video ya está en el tramo se muestra (antes la textura tiene el primer cuadro).
+            Pantallas(texturaHombro, new Vector2(8f, 1f));
+        }
+
+        void Saltar()
+        {
+            buscando = true;
+            buscandoDesde = Time.time;
+            reproductorHombro.time = inicioHombro;
         }
 
         void Ir(Momento nuevo)
@@ -122,6 +168,7 @@ namespace CuboPost
             momento = nuevo;
             desde = Time.time;
             if (nuevo != Momento.Pareja && reproductor != null && reproductor.isPlaying) { reproductor.Stop(); reproductor.Prepare(); }
+            if (nuevo != Momento.Hombro && reproductorHombro != null && reproductorHombro.isPlaying) { reproductorHombro.Stop(); reproductorHombro.Prepare(); }
             switch (nuevo)
             {
                 case Momento.Reposo:
@@ -138,6 +185,12 @@ namespace CuboPost
                     Pantallas(null, Vector2.one);   // las pantallas siguen en reposo estos 2 s
                     Luces(true, verde);
                     Personas(personasReposo);   // en pareja solo cambian las pantallas y las luces: las personas siguen siendo las mismas
+                    break;
+                case Momento.Hombro:
+                    Pantallas(null, Vector2.one);   // hasta que el video llega al segundo 9
+                    Luces(true, verde);
+                    Personas(personasReposo);   // por ahora las personas no cambian
+                    buscando = false;
                     break;
             }
         }
