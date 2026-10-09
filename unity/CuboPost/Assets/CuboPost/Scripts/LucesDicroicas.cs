@@ -28,11 +28,17 @@ namespace CuboPost
 
         void Start()
         {
+            Preparar();
+            Aplicar();
+        }
+
+        void Preparar()
+        {
+            if (bloque != null) return;
             luces = GetComponentsInChildren<Light>(true);
             lentes = System.Array.FindAll(GetComponentsInChildren<Renderer>(true), r => r.name == "Lente");
             halos = System.Array.FindAll(GetComponentsInChildren<Renderer>(true), r => r.name == "Halo");
             bloque = new MaterialPropertyBlock();
-            Aplicar();
         }
 
         void Update()
@@ -45,10 +51,12 @@ namespace CuboPost
 
         Color ColorActual => modo == Modo.Verde ? verde : modo == Modo.Violeta ? violeta : blanco;
 
-        void Aplicar()
+        void Aplicar() => Fijar(modo != Modo.Apagadas, ColorActual);
+
+        /// <summary>Prende o apaga todas con un color cualquiera (lo usan los comandos de la clase, V y N).</summary>
+        public void Fijar(bool prendidas, Color c)
         {
-            bool prendidas = modo != Modo.Apagadas;
-            var c = ColorActual;
+            Preparar();
             foreach (var l in luces) { l.enabled = prendidas; l.color = c; }
             foreach (var r in lentes)
             {

@@ -98,6 +98,20 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   tela PES verde y violeta de la marca, semitraslúcida, en aros de aluminio unidos arriba. Los 4 postes de carga
   hacen de soporte; los demás palos van sobre el pasto, con asientos redondos tapizados. Se arman solas al
   recompilar o con **post. → Construir velas de sombra** (`Editor/ConstruirVelas.cs`).
+- **Momentos de la clase** (adentro de la cabina, `Scripts/ControlClase.cs`, objeto "Control de la clase (V · N)"):
+  - **Sin comando**: las pantallas de la sala están en negro con los vectores flotando y las dicroicas apagadas.
+  - **V · calibración**: dicroicas en blanco. Las 8 pantallas de cada pared muestran "Extendé los brazos…" 2 s y
+    después "¡Calibración lista!" hasta que se toca otro comando.
+  - **N · en pareja**: dicroicas en verde y las personas de la zona de stretching paradas con los brazos al
+    costado. A los 2 s las pantallas pasan `StreamingAssets/en-pareja.mp4` y las dicroicas van de verde a
+    violeta en 1 s. Al terminar el video, vuelve a reposo.
+  - La misma tecla otra vez vuelve a reposo.
+  - Las personas en pose T para la V todavía no están (las sube Mateo). Cuando estén, se arrastra el grupo al
+    campo `personasEnT`; mientras tanto quedan las de siempre.
+- **Dicroicas** (`Scripts/LucesDicroicas.cs`): 16 en la sala y 4 en los pasillos. La tecla **L** las pasa a mano por
+  blanco, verde y violeta.
+- **Puertas** (`Scripts/PuertaInteractiva.cs`): se apuntan con el mouse y se abren o cierran con la **P**. Si el cursor
+  está tomado al caminar, vale la del centro de la vista, a menos de 4 m. La puerta apuntada se ilumina apenas.
 - **Cámara**: arrastrar para girar · rueda para acercar · 1-4 cada pared a la altura de la fila · 0 vista general · G giro automático.
 - **Reconstruir la escena** (si se cambian medidas en el código): menú **post. → Construir escena del cubo**.
 
