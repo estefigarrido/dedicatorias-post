@@ -80,7 +80,7 @@ namespace CuboPost.EditorTools
 
         // Visitante: la persona con la que se recorre la escena en Play (W A S D). Mide 1,75 m y
         // tiene los ojos unos 12 cm por debajo de la coronilla, como una persona de esa altura.
-        const float AlturaVisitante = 1.75f, OjosVisitante = 1.63f;
+        const float AlturaVisitante = 1.75f, OjosVisitante = 1.63f, AnchoVisitante = 0.50f;
         const string NombreVisitante = "Visitante (WASD)";
         // Arranca en la explanada, frente a la esquina sudeste del stand: desde ahí se ven la
         // pantalla del frente y el lado de la entrada, con la fila.
@@ -117,9 +117,10 @@ namespace CuboPost.EditorTools
         /// r16: insignia nueva, con su círculo de entrada y salida sobre transparente y llenando la pared.
         /// r17: sin cierres provisorios ni puertas del ropero (ahora son parte del interior).
         /// r18: sin el bloque de colisión de la sala: se puede entrar a la clase.
+        /// r19: visitante de 1,75 m de alto y 0,50 m de ancho (cuerpo y colisión).
         /// </summary>
         static string Firma => string.Format(CultureInfo.InvariantCulture,
-            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r18",
+            "Medidas {0}x{1}x{2} pantalla {3} franja este {4} tramos {5}-{6}-{7}-{8} puertas {9}x{10} visitante {11} nota S {12} respiración {13} en {14},{15} espera {16} notas hasta {17} r19",
             Ancho, Profundidad, AltoTotal, AltoPantalla, Franja, Tecnico, Entrada, Ropero, Salida, AnchoPuerta, AltoPuerta, AlturaVisitante,
             AnchoNotaS, CaraRespiracion, CentroRespiracionX, CentroRespiracionY, ZonaEspera, AlturaMaximaNotas);
 
@@ -640,8 +641,8 @@ namespace CuboPost.EditorTools
 
             var control = visitante.AddComponent<CharacterController>();
             control.height = AlturaVisitante;
-            control.radius = 0.25f;
             control.skinWidth = 0.03f;
+            control.radius = AnchoVisitante / 2f - control.skinWidth;   // con la piel, choca a 0,50 m de ancho
             control.center = new Vector3(0f, AlturaVisitante / 2f + control.skinWidth, 0f);
             control.stepOffset = 0.55f;    // sube cordones y el murete del anillo (0,50 m), como una persona
             control.slopeLimit = 50f;
@@ -663,6 +664,11 @@ namespace CuboPost.EditorTools
                 parte.GetComponent<MeshRenderer>().sharedMaterial = material;
                 partes[i] = parte.transform;
             }
+            // La figura mide 1,75 m; de hombro a hombro se ajusta a los 0,50 m de una persona.
+            float xMin = float.MaxValue, xMax = float.MinValue;
+            for (int i = 0; i < mallas.Length; i++)
+                foreach (var v in mallas[i].vertices) { xMin = Mathf.Min(xMin, v.x + pivotes[i].x); xMax = Mathf.Max(xMax, v.x + pivotes[i].x); }
+            cuerpo.localScale = new Vector3(AnchoVisitante / Mathf.Max(0.01f, xMax - xMin), 1f, 1f);
 
             var caminante = visitante.AddComponent<Caminante>();
             caminante.alturaOjos = OjosVisitante;

@@ -52,6 +52,7 @@ namespace CuboPost
         public Transform piernaIzquierda, piernaDerecha, brazoIzquierdo, brazoDerecho;
 
         CharacterController control;
+        float escalonMaximo;          // el escalón que sube en la plaza (cordones, murete)
         Renderer[] visibles = new Renderer[0];
         Vector3 inicio;
         bool caminando;
@@ -70,6 +71,7 @@ namespace CuboPost
         void Start()
         {
             control = GetComponent<CharacterController>();
+            escalonMaximo = control.stepOffset;
             if (cuerpo != null) visibles = cuerpo.GetComponentsInChildren<Renderer>(true);
             if (camara == null) camara = Camera.main;
             if (orbita == null && camara != null) orbita = camara.GetComponent<CamaraOrbita>();
@@ -190,6 +192,9 @@ namespace CuboPost
                 pidioSalto = ultimoPiso = -1f;
             }
             caida += Physics.gravity.y * Time.deltaTime;
+            // Para subir un escalón, Unity levanta el cuerpo antes de avanzar: bajo un dintel o un techo
+            // bajo, la cabeza choca y no pasa. Se sube solo lo que entra arriba de la cabeza.
+            control.stepOffset = EscalonPosible(control, horizontal, escalonMaximo);
             var choques = control.Move((horizontal + Vector3.up * caida) * Time.deltaTime);
             if ((choques & CollisionFlags.Above) != 0 && caida > 0f) caida = 0f;   // se golpea la cabeza: empieza a caer
 
@@ -211,6 +216,27 @@ namespace CuboPost
                     giroCuerpo = Mathf.MoveTowardsAngle(giroCuerpo, Mathf.Atan2(horizontal.x, horizontal.z) * Mathf.Rad2Deg, 540f * Time.deltaTime);
             }
             transform.rotation = Quaternion.Euler(0f, giroCuerpo, 0f);
+        }
+
+        /// <summary>
+        /// Cuánto escalón se puede subir sin que la cabeza toque algo: mira el lugar libre arriba de la
+        /// cabeza, donde está y un poco más adelante (por donde va a pasar).
+        /// </summary>
+        public static float EscalonPosible(CharacterController c, Vector3 direccion, float maximo)
+        {
+            var t = c.transform;
+            float alto = c.height + c.skinWidth;
+            var cabeza = t.position + t.rotation * c.center + Vector3.up * (alto / 2f - c.radius);
+            direccion.y = 0f;
+            var adelante = direccion.sqrMagnitude > 0.0001f ? direccion.normalized : Vector3.zero;
+            float libre = maximo;
+            foreach (float d in new[] { 0f, 0.3f, 0.6f })
+            {
+                var desde = cabeza + adelante * d;
+                if (Physics.SphereCast(desde, c.radius * 0.9f, Vector3.up, out RaycastHit hit, maximo + 0.05f, Physics.DefaultRaycastLayers, QueryTriggerInteraction.Ignore))
+                    libre = Mathf.Min(libre, hit.distance - 0.02f);
+            }
+            return Mathf.Clamp(libre, 0.02f, maximo);
         }
 
         /// <summary>Piernas y brazos van y vienen según lo que avanza de verdad (si choca con algo, se queda quieto).</summary>
