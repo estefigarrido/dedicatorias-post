@@ -35,21 +35,11 @@ namespace CuboPost
 
         static readonly (string para, string mensaje, string color)[] Ejemplos =
         {
-            ("profe caro", "Por enseñarme que el descanso también es parte del entrenamiento.", "azul"),
-            ("mamá", "Gracias por bancarme en cada carrera, aunque fuera a las 6 de la mañana.", "rosa"),
-            ("nacho", "Gracias por esperarme en cada kilómetro. Sin vos no llegaba a los 21k.", "verde"),
-            ("el grupo del parque", "Los martes a las 7 no serían lo mismo sin ustedes.", "violeta"),
-            ("delfi", "Me enseñaste a respirar cuando quería largar todo.", "crema"),
-            ("abuelo", "Por las caminatas de los domingos que me hicieron amar moverme.", "verde"),
-            ("cami", "Primer 10k juntas. Van muchos más.", "rosa"),
-            ("mi kine", "Volví a correr después de la lesión gracias a tu paciencia infinita.", "violeta"),
-            ("juli", "Sos la razón por la que no me quedo en la cama los sábados.", "azul"),
-            ("entrenador", "Cada estiramiento que me hiciste repetir valió la pena. Hoy corro sin dolor y te lo debo a vos.", "verde"),
-            ("lu", "Por creer en mí antes que yo.", "crema"),
-            ("team peaks", "Arrancamos siendo desconocidos y hoy son mi familia de los domingos. Gracias por cada kilómetro.", "azul"),
-            ("papá", "Me enseñaste a no rendirme en la última cuadra.", "verde"),
-            ("sofi", "Gracias por esperarme siempre al final, aunque llegara última.", "violeta"),
-            ("martín", "Ese empujón en el km 30 me salvó la maratón.", "rosa"),
+            // Las cuatro tarjetitas del Figma (tarjetita1–4).
+            ("nacho", "Me salvaste nachito! <3", "azul"),
+            ("cami", "Gracias por esperarme en cada kilometro, sin vos no llegaba ni a 21k!!!!!!!!!", "verde"),
+            ("delfi", "Tu apoyo hizo más liviano el camino. Sin vos nunca hubiera llegado tan lejos, te quiero delf <3", "violeta"),
+            ("Agustin", "No entendes lo que significas para mi. Lo que me ayudaste en este proceso no te das una idea.\nTe aprecio mucho!!", "rosa"),
         };
 
         void Start()

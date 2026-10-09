@@ -76,8 +76,8 @@ Proyecto de Unity 6 (6000.3.6f1, URP). Abrir la carpeta `unity/CuboPost` con Uni
   se guarda en la escena: se rearma sola al abrirla.
 - **Dedicatorias**: por ahora salen solo en la pantalla del frente (`recibeNotas` en cada pantalla; se define
   en `ConstruirCubo.cs`). Se leen de Supabase cada 2 s. Cada una aparece en 1 s, queda 15 s y se va en 1 s.
-  Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas (o las de ejemplo si no hay
-  ninguna). Las moderadas (`visible = false`) desaparecen solas.
+  Las nuevas salen apenas se publican; mientras tanto rotan las ya enviadas (o, si no hay ninguna, las cuatro
+  tarjetitas del Figma: nacho, cami, delfi y Agustin, en `ControladorCubo.cs`). Las moderadas (`visible = false`) desaparecen solas.
 - **Ejercicio de respiración** (para la fila): en la pantalla del lado este, a la derecha de la puerta de entrada
   (la carita mide Ø 1,47 m y los anillos hasta Ø 3,58 m; los puntos no cruzan esa zona). Aparece solo cada
   5 minutos o con la tecla **R** (con R de nuevo se corta): entra creciendo, hace 2 respiraciones (5 s de inhalar y
